@@ -52,7 +52,7 @@ int main()
 							exit(0);
 						}
 						MessageBox(0, _T("无法正常接入用户，自动重试"), _T("接入用户失败"), MB_OK | MB_ICONERROR);
-
+						cnt++;
 					}
 				}
 

@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "serversocket.h"
+#include"common.h"
 
 csocket* csocket::m_csock = 0;
 //csocket* pserver = csocket::getsocket();
@@ -13,8 +14,8 @@ csocket* csocket::getsocket()
 
 csocket::csocket()
 {
-	SOCKET m_sock = -1;
-	SOCKET m_client = -1;
+	m_sock = -1;
+	m_client = -1;
 	if (initsock() == 0)
 	{
 		MessageBox(NULL, _T("无法初始化套接字环境，请检查网络设置"), _T("初始化错误"), MB_OK | MB_ICONERROR);
@@ -43,8 +44,8 @@ bool csocket::init()
 	sev_addr.sin_family = AF_INET;
 	sev_addr.sin_addr.s_addr = INADDR_ANY;
 	sev_addr.sin_port = htons(9527);
-	if (bind(m_sock, (sockaddr*)&sev_addr, sizeof sev_addr) == -1) return 1;
-	if (listen(m_sock, 1) == -1) return 1;
+	if (bind(m_sock, (sockaddr*)&sev_addr, sizeof sev_addr) == SOCKET_ERROR) return 0;
+	if (listen(m_sock, 1) == -1) return 0;
 
 	return 1;
 }
@@ -61,6 +62,7 @@ bool csocket::acceptclient()
 	sockaddr_in cli_addr;
 	int cli_len = sizeof(cli_addr);
 	m_client = accept(m_sock, (sockaddr*)&cli_addr, &cli_len);
+	cout << (uint)m_client << ' ' << (m_client != -1) << endl;
 	return m_client != -1;
 }
 
