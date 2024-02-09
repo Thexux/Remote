@@ -68,5 +68,10 @@ int main()
 		nRetCode = 1;
 	}
 
+
+	while (1)
+	{
+
+	}
 	return nRetCode;
 }

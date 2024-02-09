@@ -16,7 +16,8 @@ csocket::csocket()
 {
 	m_sock = -1;
 	m_client = -1;
-	if (initsock() == 0)
+	WSADATA data;
+	if (WSAStartup(MAKEWORD(1, 1), &data))
 	{
 		MessageBox(NULL, _T("无法初始化套接字环境，请检查网络设置"), _T("初始化错误"), MB_OK | MB_ICONERROR);
 		exit(0);
@@ -50,13 +51,6 @@ bool csocket::init()
 	return 1;
 }
 
-bool csocket::initsock()
-{
-	WSADATA data;
-	if (WSAStartup(MAKEWORD(1, 1), &data)) return 0;
-	return 1;
-}
-
 bool csocket::acceptclient()
 {
 	sockaddr_in cli_addr;
@@ -66,22 +60,32 @@ bool csocket::acceptclient()
 	return m_client != -1;
 }
 
+const int BUF_SIZE = 4096;
 int csocket::dealcommand()
 {
-	if (m_client == -1) return 0;
-	char buf[1024] = "";
+	if (m_client == -1) return -1;
+	char* buf = new char[BUF_SIZE];
+	memset(buf, 0, sizeof buf);
+	uint idx = 0;
 	while (1)
 	{
-		int len = recv(m_client, buf, sizeof buf, 0);
-		if (len < 0) return -1;
-		//todo: 处理命令
+		int len = recv(m_client, buf + idx, BUF_SIZE - idx, 0);
+		if (len <= 0) return -1;
+		idx += len; 
+		m_packet = cpacket((uchar*)buf, len);
+		if (len)
+		{
+			memmove(buf, buf + len, BUF_SIZE - len);
+			idx -= len;
+			return m_packet.scmd;
+		}
 	}
 }
 
-bool csocket::sendate(const char* data, uint size)
+bool csocket::sendate(const char* pdata, uint nsize)
 {
 	if (m_client == -1) return 0;
-	return send(m_client, data, size, 0) > 0;
+	return send(m_client, pdata, nsize, 0) > 0;
 	
 }
 
@@ -103,4 +107,56 @@ csocket::chelper::chelper()
 csocket::chelper::~chelper()
 {
 	csocket::releasesock();
+}
+
+cpacket::cpacket()
+{
+}
+
+cpacket::cpacket(const uchar* pdata, int& nsize)
+{
+	uint idx = 0;
+	while (idx < nsize) if ((us)pdata[idx++] == 0xFEFF) break;
+	if (++idx + 4 + 4 + 2 >= nsize)
+	{
+		nsize = 0;
+		return;
+	}
+	nlen = (int)pdata[idx], idx += 4;
+	if (nlen + idx - 1 > nsize)
+	{
+		nsize = 0;
+		return;
+	}
+	scmd = (us)pdata[idx], idx += 2;
+	int sum = 0;
+	strbuf = "";
+	while (idx + 4 <= nsize) sum += pdata[idx], strbuf += pdata[idx++];
+	lsum = (ll)pdata[idx], idx += 4;
+
+	if (sum == lsum) nsize = idx;
+	else nsize = 0;
+}
+
+cpacket::cpacket(const cpacket& cp)
+{
+	shead = cp.shead;
+	nlen = cp.nlen;
+	scmd = cp.scmd;
+	strbuf = cp.strbuf;
+	lsum = cp.lsum;
+}
+
+cpacket& cpacket::operator=(const cpacket& cp)
+{
+	shead =cp.shead; 
+	nlen = cp.nlen; 
+	scmd = cp.scmd;
+	strbuf = cp.strbuf;
+	lsum = cp.lsum;
+	return *this;
+}
+
+cpacket::~cpacket()
+{
 }
