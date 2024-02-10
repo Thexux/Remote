@@ -1,5 +1,6 @@
 #pragma once
 #include<iostream>
+#include<cstdio>
 typedef unsigned char uchar;
 typedef unsigned short us;
 typedef unsigned int uint;

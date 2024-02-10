@@ -89,6 +89,28 @@ bool csocket::sendate(const char* pdata, uint nsize)
 	
 }
 
+//bool csocket::sendate(cpacket& pack)
+//{
+//	if (m_client == -1) return 0;
+//	return send(m_client, pack.data(), pack.size(), 0) > 0;
+//}
+
+bool csocket::sendate(cpacket pack)
+{
+	if (m_client == -1) return 0;
+	return send(m_client, pack.data(), pack.size(), 0) > 0;
+}
+
+string csocket::getfilepath()
+{
+	return m_packet.strbuf;
+}
+
+MOUSEV csocket::getmousevent()
+{
+	return *(MOUSEV*)m_packet.strbuf.c_str();
+}
+ 
 void csocket::releasesock()
 {
 	if (m_csock)
@@ -132,9 +154,9 @@ cpacket::cpacket(const uchar* pdata, int& nsize)
 	int sum = 0;
 	strbuf = "";
 	while (idx + 4 <= nsize) sum += pdata[idx], strbuf += pdata[idx++];
-	lsum = (ll)pdata[idx], idx += 4;
+	nsum = (int)pdata[idx], idx += 4;
 
-	if (sum == lsum) nsize = idx;
+	if (sum == nsum) nsize = idx;
 	else nsize = 0;
 }
 
@@ -144,7 +166,15 @@ cpacket::cpacket(const cpacket& cp)
 	nlen = cp.nlen;
 	scmd = cp.scmd;
 	strbuf = cp.strbuf;
-	lsum = cp.lsum;
+	nsum = cp.nsum;
+}
+
+cpacket::cpacket(us cmd, const uchar* pdata, int nsize)
+{
+	shead = 0xFEFF, nlen = nsize + 6, scmd = cmd, nsum = 0, strbuf = "";
+	for (int i = 0; i < nsize; i++) nsum += pdata[i], strbuf += pdata[i];
+
+	//cout << "======" << nlen << ' ' << scmd << ' ' << pdata << ' ' << strbuf << ' ' << nsum << endl;
 }
 
 cpacket& cpacket::operator=(const cpacket& cp)
@@ -153,8 +183,25 @@ cpacket& cpacket::operator=(const cpacket& cp)
 	nlen = cp.nlen; 
 	scmd = cp.scmd;
 	strbuf = cp.strbuf;
-	lsum = cp.lsum;
+	nsum = cp.nsum;
 	return *this;
+}
+
+int cpacket::size()
+{
+	return nlen + 6;
+}
+
+const char* cpacket::data()
+{
+	strout.resize(nlen + 6);
+	uchar* pdata = (uchar*)strout.c_str();
+	*(us*)pdata = shead, pdata += 2;
+	*(int*)pdata = nlen, pdata += 4;
+	*(us*)pdata = scmd, pdata += 2;
+	memcpy(pdata, strbuf.c_str(), strbuf.size()), pdata += strbuf.size();
+	*(int*)pdata = nsum;
+	return strout.c_str();
 }
 
 cpacket::~cpacket()
