@@ -12,6 +12,7 @@ csocket* csocket::getsocket()
 	return m_csock;
 }
 
+const int BUF_SIZE = 4096;
 csocket::csocket()
 {
 	WSADATA data;
@@ -20,7 +21,7 @@ csocket::csocket()
 		MessageBox(NULL, _T("无法初始化套接字环境，请检查网络设置"), _T("初始化错误"), MB_OK | MB_ICONERROR);
 		exit(0);
 	}
-	m_sock = socket(AF_INET, SOCK_STREAM, 0);
+	vbuf.resize(BUF_SIZE);
 }
 
 csocket::csocket(const csocket& cs)
@@ -36,6 +37,8 @@ csocket::~csocket()
 
 bool csocket::init(const string& strip)
 {
+	if (m_sock != -1) closesock();
+	m_sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (m_sock == -1) return 0;
 
 	sockaddr_in sev_addr;
@@ -48,6 +51,7 @@ bool csocket::init(const string& strip)
 		AfxMessageBox("指定IP地址，不存在");
 		return 0;
 	}
+
 	int res = connect(m_sock, (sockaddr*)&sev_addr, sizeof sev_addr);
 	if (res == -1)
 	{
@@ -58,11 +62,16 @@ bool csocket::init(const string& strip)
 	return 1;
 }
 
-const int BUF_SIZE = 4096;
+void csocket::closesock()
+{
+	closesocket(m_sock);
+	m_sock = -1;
+}
+
 int csocket::dealcommand()
 {
 	if (m_sock == -1) return -1;
-	char* buf = new char[BUF_SIZE];
+	char* buf = vbuf.data();
 	memset(buf, 0, sizeof buf);
 	uint idx = 0;
 	while (1)
@@ -96,7 +105,13 @@ bool csocket::sendate(const char* pdata, uint nsize)
 bool csocket::sendate(cpacket pack)
 {
 	if (m_sock == -1) return 0;
-	return send(m_sock, pack.data(), pack.size(), 0) > 0;
+	int res = send(m_sock, pack.data(), pack.size(), 0);
+	return 1;
+}
+
+cpacket& csocket::getpacket()
+{
+	return m_packet;
 }
 
 string csocket::getfilepath()
@@ -135,28 +150,35 @@ cpacket::cpacket()
 
 cpacket::cpacket(const uchar* pdata, int& nsize)
 {
-	uint idx = 0;
-	while (idx < nsize) if ((us)pdata[idx++] == 0xFEFF) break;
-	if (++idx + 4 + 4 + 2 >= nsize)
+	uint idx = 1;
+	while (idx < nsize) if (pdata[idx] << 8 | pdata[idx - 1] == 0xFEFF) break;
+
+	if (++idx + 4 + 4 + 2 > nsize)
 	{
 		nsize = 0;
 		return;
 	}
-	nlen = (int)pdata[idx], idx += 4;
+
+	nlen = *(int*)&pdata[idx], idx += 4;
+
 	if (nlen + idx - 1 > nsize)
 	{
 		nsize = 0;
 		return;
 	}
-	scmd = (us)pdata[idx], idx += 2;
+
+	scmd = *(us*)&pdata[idx], idx += 2;
+
 	int sum = 0;
 	strbuf = "";
-	while (idx + 4 <= nsize) sum += pdata[idx], strbuf += pdata[idx++];
-	nsum = (int)pdata[idx], idx += 4;
+	while (idx + 4 < nsize) sum += pdata[idx], strbuf += pdata[idx++];
+
+	nsum = *(int*)&pdata[idx], idx += 4;
 
 	if (sum == nsum) nsize = idx;
 	else nsize = 0;
 }
+
 
 cpacket::cpacket(const cpacket& cp)
 {

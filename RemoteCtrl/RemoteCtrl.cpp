@@ -308,6 +308,7 @@ int main()
 			}
 			while (csocket::getsocket())
 			{
+				cout << "============" << endl;
 				if (pserver->acceptclient() == 0)
 				{
 					if (cnt > 3)
@@ -318,8 +319,10 @@ int main()
 					MessageBox(0, _T("无法正常接入用户，自动重试"), _T("接入用户失败"), MB_OK | MB_ICONERROR);
 					cnt++;
 				}
+				cout << 1 << endl;
 				int res = pserver->dealcommand();
-				cout << res << endl;
+				cout << "====" << res << endl;
+				pserver->sendate(cpacket(res, 0, 0));
 				pserver->closeclient();
 			}
 
@@ -331,10 +334,10 @@ int main()
 			//downloadfile(); // 下载文件
 			//mousevent(); // 鼠标事件
 			//sendscreen(); // 发送屏幕截图
-			lockmachine(); // 锁机
+			//lockmachine(); // 锁机
 			//unlockmachine(); // 解锁
-			Sleep(1000);
-			unlockmachine();
+			//Sleep(1000);
+			//unlockmachine();
 		}
 	}
 	else
@@ -346,8 +349,8 @@ int main()
 
 	while (1)
 	{
-		cout << dlg.m_hWnd << endl;
-		Sleep(1000);
+		//cout << dlg.m_hWnd << endl;
+		//Sleep(1000);
 	}
 	return nRetCode;
 }

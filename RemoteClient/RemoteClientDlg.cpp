@@ -160,7 +160,16 @@ csocket* pclient = csocket::getsocket();
 void CRemoteClientDlg::OnBnClickedBtnTest()
 {
 	int res = pclient->init("127.0.0.1"); // todo:返回值处理
-	if (res == 0) AfxMessageBox("网络初始化失败");
-										  
-	//pclient->sendate(cpacket());
+	if (res == 0)
+	{
+		AfxMessageBox("网络初始化失败");
+		return;
+	}
+	int f = pclient->sendate(cpacket(1981, 0, 0)); 
+
+	pclient->dealcommand();
+	cpacket packres = pclient->getpacket();
+	
+	TRACE("ack:%d\r\n", packres.scmd);
+	pclient->closesock();
 }

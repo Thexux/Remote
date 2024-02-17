@@ -35,10 +35,12 @@ class csocket
 public:
 	static csocket* getsocket();
 	bool init(const string& strip);
+	void closesock();
 	int dealcommand();
 	bool sendate(const char* pdata, uint nsize);
 	//bool sendate(cpacket& pack);
 	bool sendate(cpacket pack);
+	cpacket& getpacket();
 	string getfilepath();
 	MOUSEV getmousevent();
 
@@ -54,6 +56,7 @@ private:
 		chelper();
 		~chelper();
 	};
+	vector<char> vbuf;
 	static csocket* m_csock;
 	static chelper m_help;
 	SOCKET m_sock;

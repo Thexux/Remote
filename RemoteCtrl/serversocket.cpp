@@ -65,18 +65,24 @@ int csocket::dealcommand()
 {
 	if (m_client == -1) return -1;
 	char* buf = new char[BUF_SIZE];
+	if (buf == 0) return -2; //ÄÚ´æ²»×ã
 	memset(buf, 0, sizeof buf);
 	uint idx = 0;
 	while (1)
 	{
 		int len = recv(m_client, buf + idx, BUF_SIZE - idx, 0);
-		if (len <= 0) return -1;
+		if (len <= 0)
+		{
+			delete[] buf;
+			return -1;
+		}
 		idx += len; 
 		m_packet = cpacket((uchar*)buf, len);
 		if (len)
 		{
 			memmove(buf, buf + len, BUF_SIZE - len);
 			idx -= len;
+			delete[] buf;
 			return m_packet.scmd;
 		}
 	}
@@ -105,6 +111,11 @@ bool csocket::sendate(cpacket pack)
 {
 	if (m_client == -1) return 0;
 	return send(m_client, pack.data(), pack.size(), 0) > 0;
+}
+
+cpacket& csocket::getpacket()
+{
+	return m_packet;
 }
 
 string csocket::getfilepath()
@@ -143,24 +154,30 @@ cpacket::cpacket()
 
 cpacket::cpacket(const uchar* pdata, int& nsize)
 {
-	uint idx = 0;
-	while (idx < nsize) if ((us)pdata[idx++] == 0xFEFF) break;
-	if (++idx + 4 + 4 + 2 >= nsize)
+	uint idx = 1;
+	while (idx < nsize) if (pdata[idx] << 8 | pdata[idx - 1]  == 0xFEFF) break;
+
+	if (++idx + 4 + 4 + 2 > nsize)
 	{
 		nsize = 0;
 		return;
 	}
-	nlen = (int)pdata[idx], idx += 4;
+
+	nlen = *(int*)&pdata[idx], idx += 4;
+
 	if (nlen + idx - 1 > nsize)
 	{
 		nsize = 0;
 		return;
 	}
-	scmd = (us)pdata[idx], idx += 2;
+
+	scmd = *(us*)&pdata[idx], idx += 2;
+
 	int sum = 0;
 	strbuf = "";
-	while (idx + 4 <= nsize) sum += pdata[idx], strbuf += pdata[idx++];
-	nsum = (int)pdata[idx], idx += 4;
+	while (idx + 4 < nsize) sum += pdata[idx], strbuf += pdata[idx++];
+
+	nsum = *(int*)&pdata[idx], idx += 4;
 
 	if (sum == nsum) nsize = idx;
 	else nsize = 0;
