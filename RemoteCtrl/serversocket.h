@@ -37,6 +37,7 @@ public:
 	bool init();
 	bool acceptclient();
 	int dealcommand();
+	void closeclient();
 	bool sendate(const char* pdata, uint nsize);
 	//bool sendate(cpacket& pack);
 	bool sendate(cpacket pack);

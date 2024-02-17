@@ -82,6 +82,12 @@ int csocket::dealcommand()
 	}
 }
 
+void csocket::closeclient()
+{
+	closesocket(m_client);
+	m_client = INVALID_SOCKET;
+}
+
 bool csocket::sendate(const char* pdata, uint nsize)
 {
 	if (m_client == -1) return 0;

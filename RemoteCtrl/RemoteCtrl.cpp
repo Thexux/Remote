@@ -299,7 +299,7 @@ int main()
 		else
 		{
 
-			/*int cnt = 0;
+			int cnt = 0;
 			csocket* pserver = csocket::getsocket();
 			if (pserver->init() == 0)
 			{
@@ -308,22 +308,20 @@ int main()
 			}
 			while (csocket::getsocket())
 			{
-				if (pserver)
+				if (pserver->acceptclient() == 0)
 				{
-					if (pserver->acceptclient() == 0)
+					if (cnt > 3)
 					{
-						if (cnt > 3)
-						{
-							MessageBox(0, _T("多次无法正常接入用户，程序结束"), _T("接入用户失败"), MB_OK | MB_ICONERROR);
-							exit(0);
-						}
-						MessageBox(0, _T("无法正常接入用户，自动重试"), _T("接入用户失败"), MB_OK | MB_ICONERROR);
-						cnt++;
+						MessageBox(0, _T("多次无法正常接入用户，程序结束"), _T("接入用户失败"), MB_OK | MB_ICONERROR);
+						exit(0);
 					}
+					MessageBox(0, _T("无法正常接入用户，自动重试"), _T("接入用户失败"), MB_OK | MB_ICONERROR);
+					cnt++;
 				}
-
-				
-			}*/
+				int res = pserver->dealcommand();
+				cout << res << endl;
+				pserver->closeclient();
+			}
 
 			
 
