@@ -22,6 +22,7 @@ csocket::csocket()
 		exit(0);
 	}
 	vbuf.resize(BUF_SIZE);
+	nbufidx = 0;
 }
 
 csocket::csocket(const csocket& cs)
@@ -71,22 +72,23 @@ void csocket::closesock()
 int csocket::dealcommand()
 {
 	if (m_sock == -1) return -1;
+
 	char* buf = vbuf.data();
-	memset(buf, 0, sizeof buf);
-	uint idx = 0;
+	if (nbufidx == 0) memset(buf, 0, sizeof buf), nbufidx = 0;
 	while (1)
 	{
-		int len = recv(m_sock, buf + idx, BUF_SIZE - idx, 0);
-		if (len <= 0) return -1;
-		idx += len;
-		cout << "=====len:" << len << endl;
+		int len = nbufidx;
 		m_packet = cpacket((uchar*)buf, len);
 		if (len)
 		{
 			memmove(buf, buf + len, BUF_SIZE - len);
-			idx -= len;
+			nbufidx -= len;
 			return m_packet.scmd;
 		}
+
+		len = recv(m_sock, buf + nbufidx, BUF_SIZE - nbufidx, 0);
+		if (len <= 0) return -1;
+		nbufidx += len;
 	}
 }
 

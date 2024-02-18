@@ -226,7 +226,7 @@ string CRemoteClientDlg::getpath(HTREEITEM htree)
 	{
 		strt = m_tree.GetItemText(htree);
 		stres = strt + '\\' + stres;
-		cout << stres << endl;
+		//cout << stres << endl;
 		//TRACE(_T("%s\r\n"), stres);
 		for (int i = 0; i < stres.size(); i++) TRACE("%c\r\n", stres[i]);
 
@@ -263,7 +263,7 @@ void CRemoteClientDlg::OnNMDblclkTreeDir(NMHDR* pNMHDR, LRESULT* pResult)
 
 	while (pinfo->hasnext)
 	{
-		//cout << pinfo->hasnext << ' ' << pinfo->isdirectory << ' ' << pinfo->filename << endl;
+		cout << pinfo->hasnext << ' ' << pinfo->isdirectory << ' ' << pinfo->filename << endl;
 		if (pinfo->isdirectory)
 		{
 			if (string(pinfo->filename) == "." || string(pinfo->filename) == "..")

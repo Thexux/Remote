@@ -297,7 +297,6 @@ int main()
 					MessageBox(0, _T("无法正常接入用户，自动重试"), _T("接入用户失败"), MB_OK | MB_ICONERROR);
 					cnt++;
 				}
-				cout << 1 << endl;
 				int res = pserver->dealcommand();
 				cout << "====" << res << endl;
 				if (res == 1) makedriverinfo();
