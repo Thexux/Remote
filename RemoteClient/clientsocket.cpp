@@ -79,6 +79,7 @@ int csocket::dealcommand()
 		int len = recv(m_sock, buf + idx, BUF_SIZE - idx, 0);
 		if (len <= 0) return -1;
 		idx += len;
+		cout << "=====len:" << len << endl;
 		m_packet = cpacket((uchar*)buf, len);
 		if (len)
 		{
@@ -150,33 +151,43 @@ cpacket::cpacket()
 
 cpacket::cpacket(const uchar* pdata, int& nsize)
 {
-	uint idx = 1;
-	while (idx < nsize) if (pdata[idx] << 8 | pdata[idx - 1] == 0xFEFF) break;
-
-	if (++idx + 4 + 4 + 2 > nsize)
+	/*cout << "=====" << endl;
+	for (int i = 0; i < nsize; i++)
 	{
-		nsize = 0;
-		return;
+		if (i && i % 40 == 0) cout << endl;
+		printf("%02X ", pdata[i]);
 	}
+	cout << endl;*/
 
-	nlen = *(int*)&pdata[idx], idx += 4;
+	int idx = 0, n = nsize;
+	nsize = 0;
 
-	if (nlen + idx - 1 > nsize)
-	{
-		nsize = 0;
-		return;
-	}
+	if (idx + 2 >= n) return;
+	while (idx < n) if (*(us*)(pdata + idx++) == 0xFEFF) break;
+
+	if (idx + 4 >= n) return;
+	nlen = *(int*)&pdata[++idx], idx += 4;
+	int nstsize = nlen - 6;
+	//cout << "nlen" << ' ' << nlen << endl;
+	if (idx + nlen > n) return;
 
 	scmd = *(us*)&pdata[idx], idx += 2;
+	//cout << "scmd" << ' ' << scmd << endl;
 
 	int sum = 0;
 	strbuf = "";
-	while (idx + 4 < nsize) sum += pdata[idx], strbuf += pdata[idx++];
+
+	for (int i = 0; i < nstsize; i++) sum += pdata[idx + i], strbuf += pdata[idx + i];
+	idx += nstsize;
+	//cout << "strbuf" << ' ' << strbuf << endl;
+	/*FILEINFO* pinfo = (FILEINFO*)strbuf.c_str();
+	cout << "strbuf:" << pinfo->filename << ' ' << pinfo->hasnext << ' ' << pinfo->isdirectory <<
+		' ' << pinfo->isvalid << endl;*/
 
 	nsum = *(int*)&pdata[idx], idx += 4;
+	//cout << "nsum" << ' ' << nsum << endl;
 
-	if (sum == nsum) nsize = idx;
-	else nsize = 0;
+	if (nsum == sum) nsize = idx;
 }
 
 

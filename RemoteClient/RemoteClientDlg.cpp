@@ -13,7 +13,7 @@
 #define new DEBUG_NEW
 #endif
 
-
+csocket* pclient = csocket::getsocket();
 // 用于应用程序“关于”菜单项的 CAboutDlg 对话框
 
 class CAboutDlg : public CDialogEx
@@ -57,6 +57,8 @@ CRemoteClientDlg::CRemoteClientDlg(CWnd* pParent /*=nullptr*/)
 	, m_nport(_T(""))
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
+	AllocConsole();
+	freopen("CONOUT$", "w", stdout);
 }
 
 void CRemoteClientDlg::DoDataExchange(CDataExchange* pDX)
@@ -64,6 +66,27 @@ void CRemoteClientDlg::DoDataExchange(CDataExchange* pDX)
 	CDialogEx::DoDataExchange(pDX);
 	DDX_IPAddress(pDX, IDC_IPADDR_SERV, m_server_address);
 	DDX_Text(pDX, IDC_EDIT_PORT, m_nport);
+	DDX_Control(pDX, IDC_TREE_DIR, m_tree);
+}
+
+int CRemoteClientDlg::sendcommandpacket(int ncmd, uchar* pdata, int nlen, bool bclose)
+{
+	UpdateData();
+	//m_server_address;
+	TRACE("%0X, %d\r\n", m_server_address, atoi(m_nport));
+	int res = pclient->init(m_server_address, atoi(m_nport)); // todo:返回值处理
+	if (res == 0)
+	{
+		AfxMessageBox("网络初始化失败");
+		return -1;
+	}
+	int f = pclient->sendate(cpacket(ncmd, pdata, nlen));
+
+	int cmd = pclient->dealcommand();
+	
+	TRACE("ack:%d\r\n", cmd);
+	if (bclose) pclient->closesock();
+	return cmd;
 }
 
 BEGIN_MESSAGE_MAP(CRemoteClientDlg, CDialogEx)
@@ -72,6 +95,8 @@ BEGIN_MESSAGE_MAP(CRemoteClientDlg, CDialogEx)
 	ON_WM_QUERYDRAGICON()
 	ON_BN_CLICKED(IDC_BTN_TEST, &CRemoteClientDlg::OnBnClickedBtnTest)
 
+	ON_BN_CLICKED(IDC_BTN_FILEINFO, &CRemoteClientDlg::OnBnClickedBtnFileinfo)
+	ON_NOTIFY(NM_DBLCLK, IDC_TREE_DIR, &CRemoteClientDlg::OnNMDblclkTreeDir)
 END_MESSAGE_MAP()
 
 
@@ -164,26 +189,102 @@ HCURSOR CRemoteClientDlg::OnQueryDragIcon()
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
-
-csocket* pclient = csocket::getsocket();
 void CRemoteClientDlg::OnBnClickedBtnTest()
 {
-	UpdateData();
-	//m_server_address;
-	TRACE("%0X, %d\r\n", m_server_address, atoi(m_nport));
-	int res = pclient->init(m_server_address, atoi(m_nport)); // todo:返回值处理
-	if (res == 0)
+	sendcommandpacket(1981);
+}
+
+void CRemoteClientDlg::OnBnClickedBtnFileinfo()
+{
+	// TODO: 在此添加控件通知处理程序代码
+	int res = sendcommandpacket(1);
+	if (res == -1)
 	{
-		AfxMessageBox("网络初始化失败");
+		AfxMessageBox(_T("命令处理失败！！！"));
 		return;
 	}
-	int f = pclient->sendate(cpacket(1981, 0, 0)); 
-	
-	pclient->dealcommand();
-	cpacket packres = pclient->getpacket();
-	
-	TRACE("ack:%d\r\n", packres.scmd);
-	pclient->closesock();
+	string strdata = pclient->getpacket().strbuf;
+	string strt;
+	m_tree.DeleteAllItems();
+	for (int i = 0; i < strdata.size(); i++)
+	{
+		if (strdata[i] == ',')
+		{
+			strt += ':';
+			HTREEITEM ht = m_tree.InsertItem(strt.c_str(), TVI_ROOT, TVI_LAST);
+			m_tree.InsertItem(0, ht, TVI_LAST);
+			strt = "";
+		}
+		else strt += strdata[i];
+	}
+}
+
+string CRemoteClientDlg::getpath(HTREEITEM htree)
+{
+	string stres, strt;
+	do
+	{
+		strt = m_tree.GetItemText(htree);
+		stres = strt + '\\' + stres;
+		cout << stres << endl;
+		//TRACE(_T("%s\r\n"), stres);
+		for (int i = 0; i < stres.size(); i++) TRACE("%c\r\n", stres[i]);
+
+		htree = m_tree.GetParentItem(htree);
+	} while (htree);
+	return stres;
+}
+
+void CRemoteClientDlg::deletetreechilditem(HTREEITEM htree)
+{
+	HTREEITEM hsub = 0;
+	do
+	{
+		hsub = m_tree.GetChildItem(htree);
+		if (hsub) m_tree.DeleteItem(hsub);
+	} while (hsub);
 }
 
 
+void CRemoteClientDlg::OnNMDblclkTreeDir(NMHDR* pNMHDR, LRESULT* pResult)
+{
+	// TODO: 在此添加控件通知处理程序代码
+	*pResult = 0;
+	CPoint ptmouse;
+	GetCursorPos(&ptmouse);
+	m_tree.ScreenToClient(&ptmouse);
+	HTREEITEM htree = m_tree.HitTest(ptmouse, 0);
+	if (htree == 0) return;
+	if (m_tree.GetChildItem(htree) == 0) return;
+	deletetreechilditem(htree);
+	string strpath = getpath(htree);
+	int cmd = sendcommandpacket(2, (uchar*)strpath.c_str(), strpath.size(), 0);
+	FILEINFO* pinfo = (FILEINFO*)pclient->getpacket().strbuf.c_str();
+
+	while (pinfo->hasnext)
+	{
+		//cout << pinfo->hasnext << ' ' << pinfo->isdirectory << ' ' << pinfo->filename << endl;
+		if (pinfo->isdirectory)
+		{
+			if (string(pinfo->filename) == "." || string(pinfo->filename) == "..")
+			{
+				int cmd = pclient->dealcommand();
+				TRACE("ack:&d\r\n", cmd);
+				if (cmd < 0) break;
+				pinfo = (FILEINFO*)pclient->getpacket().strbuf.c_str();
+				continue;
+		
+			}
+		}
+		HTREEITEM ht = m_tree.InsertItem(pinfo->filename, htree, TVI_LAST);
+		if (pinfo->isdirectory)
+		{
+			m_tree.InsertItem("", ht, TVI_LAST);
+		}
+		int cmd = pclient->dealcommand();
+		//cout << cmd << endl;
+		if (cmd < 0) break;
+		pinfo = (FILEINFO*)pclient->getpacket().strbuf.c_str();
+	}
+	pclient->closesock();
+}

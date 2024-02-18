@@ -28,17 +28,6 @@ void dump(uchar* pdata, int nsize)
 	{
 		printf("%02X ", pdata[i]);
 	}
-
-	/*string st;
-	for (int i = 0; i < nsize; i++)
-	{
-		char buf[8] = "";
-		if (i > 0 && (i % 16) == 0) st += '\n';
-		snprintf(buf, sizeof(buf), "%02X ", pdata[i]);
-		st += buf;
-	}
-	st += '\n';
-	OutputDebugStringA(st.c_str());*/
 }
 
 int makedriverinfo()
@@ -46,51 +35,40 @@ int makedriverinfo()
 	string res;
 	for (int i = 1; i <= 26; i++)
 	{
-		if (_chdrive(i) == 0)
-		{
-			if (res.size()) res += ',';
-			res += 'A' + i - 1;
-		}
+		if (_chdrive(i) == 0) res += 'A' + i - 1, res += ',';
 	}
 
 	cpacket pack = cpacket(1, (uchar*)res.c_str(), res.size());
 
 	dump((uchar*)pack.data(), pack.size());
-	//csocket::getsocket()->sendate(pack);
+	csocket::getsocket()->sendate(pack);
 	return 0;
 }
-
-struct FILEINFO
-{
-	bool isvalid = 0;
-	bool isdirectory = 0;
-	bool hasnext = 1;
-	char filename[256] = { 0 };
-};
 
 int makedirectoryinfo()
 {
 	string strpath = csocket::getsocket()->getfilepath();
 
-	if (_chdir(strpath.c_str()) != 0)
+	cout << strpath.c_str() << endl;
+	if (_chdir(strpath.c_str()) != 0) //将当前工作目录更改为strpath
 	{
 
 		return -2;
 	}
 	_finddata_t fdata;
-	int hfind = _findfirst("*", &fdata);
+	int hfind = _findfirst("*", &fdata); //获取符合指定条件的文件
 	if (hfind == -1)
 	{
 		return -3;
 	}
-
+	int cnt = 5;
 	do
 	{
 		FILEINFO finfo;
 		finfo.isdirectory = (fdata.attrib & _A_SUBDIR) != 0;
 		memcpy(finfo.filename, fdata.name, strlen(fdata.name));
-		cpacket pack(2, (uchar*)&finfo, sizeof(finfo));
-		csocket::getsocket()->sendate(pack);
+		cout << finfo.filename << endl;
+		csocket::getsocket()->sendate(cpacket(2, (uchar*)&finfo, sizeof finfo));
 	} while (!_findnext(hfind, &fdata));
 
 	FILEINFO finfo;
@@ -322,7 +300,9 @@ int main()
 				cout << 1 << endl;
 				int res = pserver->dealcommand();
 				cout << "====" << res << endl;
-				pserver->sendate(cpacket(res, 0, 0));
+				if (res == 1) makedriverinfo();
+				if (res == 2) makedirectoryinfo();
+				//pserver->sendate(cpacket(res, 0, 0));
 				pserver->closeclient();
 			}
 

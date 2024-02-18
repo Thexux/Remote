@@ -1,6 +1,16 @@
 #pragma once
 #include"common.h"
 
+const int FILESIZE = 256; //256
+
+struct FILEINFO
+{
+	bool isvalid = 0;
+	bool isdirectory = 0;
+	bool hasnext = 1;
+	char filename[FILESIZE] = { 0 };
+};
+
 //#pragma pack(push)
 //#pragma pack(1)
 class cpacket

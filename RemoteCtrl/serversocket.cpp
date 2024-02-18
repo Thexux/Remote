@@ -197,7 +197,10 @@ cpacket::cpacket(us cmd, const uchar* pdata, int nsize)
 	shead = 0xFEFF, nlen = nsize + 6, scmd = cmd, nsum = 0, strbuf = "";
 	for (int i = 0; i < nsize; i++) nsum += pdata[i], strbuf += pdata[i];
 
-	//cout << "======" << nlen << ' ' << scmd << ' ' << pdata << ' ' << strbuf << ' ' << nsum << endl;
+	cout << "======" << nlen << ' ' << scmd << ' ' << nsum << endl;
+	FILEINFO* pinfo = (FILEINFO*)strbuf.c_str();
+	cout << "strbuf:" << pinfo->filename << ' ' << pinfo->hasnext << ' ' << pinfo->isdirectory <<
+		' ' << pinfo->isvalid << endl;
 }
 
 cpacket& cpacket::operator=(const cpacket& cp)

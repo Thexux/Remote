@@ -1,7 +1,7 @@
 ﻿
 // RemoteClientDlg.h: 头文件
 //
-
+#include "common.h"
 #pragma once
 
 
@@ -20,6 +20,10 @@ public:
 	protected:
 	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV 支持
 
+private:
+	int sendcommandpacket(int ncmd, uchar* pdata = 0, int nlen = 0, bool bclose = 1);
+	string getpath(HTREEITEM htree);
+	void deletetreechilditem(HTREEITEM htree);
 
 // 实现
 protected:
@@ -36,4 +40,8 @@ public:
 	afx_msg void OnEnChangeEdit1();
 	DWORD m_server_address;
 	CString m_nport;
+	afx_msg void OnTvnSelchangedTree1(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnBnClickedBtnFileinfo();
+	CTreeCtrl m_tree;
+	afx_msg void OnNMDblclkTreeDir(NMHDR* pNMHDR, LRESULT* pResult);
 };
