@@ -35,7 +35,7 @@ csocket::~csocket()
 	WSACleanup();
 }
 
-bool csocket::init(const string& strip)
+bool csocket::init(int nip, int nport)
 {
 	if (m_sock != -1) closesock();
 	m_sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -44,8 +44,8 @@ bool csocket::init(const string& strip)
 	sockaddr_in sev_addr;
 	memset(&sev_addr, 0, sizeof sev_addr);
 	sev_addr.sin_family = AF_INET;
-	sev_addr.sin_addr.s_addr = inet_addr(strip.c_str());
-	sev_addr.sin_port = htons(9527);
+	sev_addr.sin_addr.s_addr = htonl(nip);
+	sev_addr.sin_port = htons(nport);
 	if (sev_addr.sin_addr.s_addr == INADDR_NONE)
 	{
 		AfxMessageBox("指定IP地址，不存在");

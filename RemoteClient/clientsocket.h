@@ -34,7 +34,7 @@ class csocket
 {
 public:
 	static csocket* getsocket();
-	bool init(const string& strip);
+	bool init(int nip, int nport);
 	void closesock();
 	int dealcommand();
 	bool sendate(const char* pdata, uint nsize);

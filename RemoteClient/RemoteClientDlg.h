@@ -33,4 +33,7 @@ protected:
 	DECLARE_MESSAGE_MAP()
 public:
 	afx_msg void OnBnClickedBtnTest();
+	afx_msg void OnEnChangeEdit1();
+	DWORD m_server_address;
+	CString m_nport;
 };
