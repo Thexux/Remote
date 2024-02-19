@@ -100,6 +100,9 @@ BEGIN_MESSAGE_MAP(CRemoteClientDlg, CDialogEx)
 	ON_NOTIFY(NM_DBLCLK, IDC_TREE_DIR, &CRemoteClientDlg::OnNMDblclkTreeDir)
 	ON_NOTIFY(NM_CLICK, IDC_TREE_DIR, &CRemoteClientDlg::OnNMClickTreeDir)
 	ON_NOTIFY(NM_RCLICK, IDC_LIST_FILE, &CRemoteClientDlg::OnNMRClickListFile)
+	ON_COMMAND(ID_DOWNLOAD_FILE, &CRemoteClientDlg::OnDownloadFile)
+	ON_COMMAND(ID_DELETE_FILE, &CRemoteClientDlg::OnDeleteFile)
+	ON_COMMAND(ID_RUN_FILE, &CRemoteClientDlg::OnRunFile)
 END_MESSAGE_MAP()
 
 
@@ -229,10 +232,6 @@ string CRemoteClientDlg::getpath(HTREEITEM htree)
 	{
 		strt = m_tree.GetItemText(htree);
 		stres = strt + '\\' + stres;
-		//cout << stres << endl;
-		//TRACE(_T("%s\r\n"), stres);
-		for (int i = 0; i < stres.size(); i++) TRACE("%c\r\n", stres[i]);
-
 		htree = m_tree.GetParentItem(htree);
 	} while (htree);
 	return stres;
@@ -324,4 +323,77 @@ void CRemoteClientDlg::OnNMRClickListFile(NMHDR* pNMHDR, LRESULT* pResult)
 	if (ppop) ppop->TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, ptmouse.x, ptmouse.y, this);
 	
 
+}
+
+
+void CRemoteClientDlg::OnDownloadFile()
+{
+	int nlistslt = m_list.GetSelectionMark();
+	string strfile = m_list.GetItemText(nlistslt, 0);
+	CFileDialog dlg(FALSE, "*", m_list.GetItemText(nlistslt, 0),
+		OFN_HIDEREADONLY| OFN_OVERWRITEPROMPT, 0, this);
+
+	if (dlg.DoModal() != IDOK) return;
+	cout << dlg.GetPathName() << endl;
+
+	FILE* pfile = fopen(dlg.GetPathName(), "wb+");
+	if (pfile == 0)
+	{
+		AfxMessageBox("本地没有权限保存该文件，或这文件无法创建！！！");
+		return;
+	}
+
+	HTREEITEM hslt = m_tree.GetSelectedItem();
+	strfile = getpath(hslt) + strfile;
+	cout << strfile << endl;
+	int res = sendcommandpacket(4, (uchar*)strfile.c_str(), strfile.size(), 0);
+	if (res != 4)
+	{
+		AfxMessageBox("执行下载命令失败！！");
+		return;
+	}
+
+	int nst = pclient->getpacket().strbuf.size();
+	while (nst)
+	{
+		fwrite(pclient->getpacket().strbuf.c_str(), 1, nst, pfile);
+		us cmd = pclient->dealcommand();
+		if (cmd != 4)
+		{
+			AfxMessageBox("传输失败！！");
+			break;
+		}
+		nst = pclient->getpacket().strbuf.size();
+	}
+	
+
+
+	/*ll len = *(ll*)pclient->getpacket().strbuf.c_str();
+
+	for (int nst = 1; nst; )
+	{
+		us cmd = pclient->dealcommand();
+		if (cmd != 4)
+		{
+			AfxMessageBox("传输失败！！");
+			break;
+		}
+		nst = pclient->getpacket().strbuf.size();
+		fwrite(pclient->getpacket().strbuf.c_str(), 1, nst, pfile);
+	}*/
+	
+	fclose(pfile);
+	pclient->closesock();
+}
+
+
+void CRemoteClientDlg::OnDeleteFile()
+{
+	// TODO: 在此添加命令处理程序代码
+}
+
+
+void CRemoteClientDlg::OnRunFile()
+{
+	// TODO: 在此添加命令处理程序代码
 }

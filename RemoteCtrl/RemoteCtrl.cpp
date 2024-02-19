@@ -49,10 +49,8 @@ int makedirectoryinfo()
 {
 	string strpath = csocket::getsocket()->getfilepath();
 
-	cout << strpath.c_str() << endl;
 	if (_chdir(strpath.c_str()) != 0) //将当前工作目录更改为strpath
 	{
-
 		return -2;
 	}
 	_finddata_t fdata;
@@ -67,7 +65,6 @@ int makedirectoryinfo()
 		FILEINFO finfo;
 		finfo.isdirectory = (fdata.attrib & _A_SUBDIR) != 0;
 		memcpy(finfo.filename, fdata.name, strlen(fdata.name));
-		cout << finfo.filename << endl;
 		csocket::getsocket()->sendate(cpacket(2, (uchar*)&finfo, sizeof finfo));
 	} while (!_findnext(hfind, &fdata));
 
@@ -91,16 +88,17 @@ int downloadfile()
 {
 	string strpath = pserver->getfilepath();
 	FILE* pfile = fopen(strpath.c_str(), "rb");
-	ll dlen = 0;
+	cout << strpath << endl;
 	if (pfile == 0)
 	{
 		pserver->sendate(cpacket(4, 0, 0));
 		return -1;
 	}
+	/*ll dlen = 0;
 	fseek(pfile, 0, SEEK_END);
 	dlen = _ftelli64(pfile);
 	pserver->sendate(cpacket(4, (uchar*)&dlen, 8));
-	fseek(pfile, 0, SEEK_SET);
+	fseek(pfile, 0, SEEK_SET);*/
 	char buf[1024] = "";
 	while (1)
 	{
@@ -301,7 +299,8 @@ int main()
 				cout << "====" << res << endl;
 				if (res == 1) makedriverinfo();
 				if (res == 2) makedirectoryinfo();
-				//pserver->sendate(cpacket(res, 0, 0));
+				if (res == 4) downloadfile();
+ 				//pserver->sendate(cpacket(res, 0, 0));
 				pserver->closeclient();
 			}
 
