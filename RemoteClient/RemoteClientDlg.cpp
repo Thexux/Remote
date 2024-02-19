@@ -247,6 +247,28 @@ void CRemoteClientDlg::deletetreechilditem(HTREEITEM htree)
 	} while (hsub);
 }
 
+void CRemoteClientDlg::loadfilecurrent()
+{
+	HTREEITEM htree = m_tree.GetSelectedItem();
+	string strpath = getpath(htree);
+	m_list.DeleteAllItems();
+	int cmd = sendcommandpacket(2, (uchar*)strpath.c_str(), strpath.size(), 0);
+	FILEINFO* pinfo = (FILEINFO*)pclient->getpacket().strbuf.c_str();
+
+	while (pinfo->hasnext)
+	{
+		cout << pinfo->hasnext << ' ' << pinfo->isdirectory << ' ' << pinfo->filename << endl;
+		if (!pinfo->isdirectory) m_list.InsertItem(0, pinfo->filename);
+
+		cmd = pclient->dealcommand();
+		//cout << cmd << endl;
+		if (cmd < 0) break;
+		pinfo = (FILEINFO*)pclient->getpacket().strbuf.c_str();
+	}
+	pclient->closesock();
+}
+
+
 void CRemoteClientDlg::loadfileinfo()
 {
 	CPoint ptmouse;
@@ -349,7 +371,7 @@ void CRemoteClientDlg::OnDownloadFile()
 	int res = sendcommandpacket(4, (uchar*)strfile.c_str(), strfile.size(), 0);
 	if (res != 4)
 	{
-		AfxMessageBox("执行下载命令失败！！");
+		AfxMessageBox("执行下载命令失败！！"), fclose(pfile), pclient->closesock();
 		return;
 	}
 
@@ -366,22 +388,6 @@ void CRemoteClientDlg::OnDownloadFile()
 		nst = pclient->getpacket().strbuf.size();
 	}
 	
-
-
-	/*ll len = *(ll*)pclient->getpacket().strbuf.c_str();
-
-	for (int nst = 1; nst; )
-	{
-		us cmd = pclient->dealcommand();
-		if (cmd != 4)
-		{
-			AfxMessageBox("传输失败！！");
-			break;
-		}
-		nst = pclient->getpacket().strbuf.size();
-		fwrite(pclient->getpacket().strbuf.c_str(), 1, nst, pfile);
-	}*/
-	
 	fclose(pfile);
 	pclient->closesock();
 }
@@ -389,11 +395,25 @@ void CRemoteClientDlg::OnDownloadFile()
 
 void CRemoteClientDlg::OnDeleteFile()
 {
-	// TODO: 在此添加命令处理程序代码
+	HTREEITEM hslt = m_tree.GetSelectedItem();
+	string strpath = getpath(hslt);
+	int nslt = m_list.GetSelectionMark();
+	string strfile = m_list.GetItemText(nslt, 0);
+	strfile = strpath + strfile;
+	int res = sendcommandpacket(5, (uchar*)strfile.c_str(), strfile.size());
+	if (res != 5) AfxMessageBox("删除文件命令执行失败");
+	loadfilecurrent();
 }
 
 
 void CRemoteClientDlg::OnRunFile()
 {
-	// TODO: 在此添加命令处理程序代码
+	HTREEITEM hslt = m_tree.GetSelectedItem();
+	string strpath = getpath(hslt);
+	int nslt = m_list.GetSelectionMark();
+	string strfile = m_list.GetItemText(nslt, 0);
+	strfile = strpath + strfile;
+	int res = sendcommandpacket(3, (uchar*)strfile.c_str(), strfile.size());
+	if (res != 3) AfxMessageBox("打开文件命令执行失败");
+
 }

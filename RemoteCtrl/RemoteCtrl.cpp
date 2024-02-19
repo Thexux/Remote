@@ -79,6 +79,7 @@ int makedirectoryinfo()
 int runfile()
 {
 	string strpath = pserver->getfilepath();
+	cout << strpath << endl;
 	ShellExecuteA(NULL, NULL, strpath.c_str(), NULL, NULL, SW_SHOWNORMAL);
 	pserver->sendate(cpacket(3, 0, 0));
 	return 0;
@@ -109,7 +110,19 @@ int downloadfile()
 
 	pserver->sendate(cpacket(4, 0, 0));
 	fclose(pfile);
+	return 0;
 }
+
+int deletelocalfile()
+{
+	string strpath = pserver->getfilepath();
+	TCHAR path[MAX_PATH] = _T("");
+	mbstowcs(path, strpath.c_str(), strpath.size());
+	DeleteFileA(strpath.c_str());
+	pserver->sendate(cpacket(5, 0, 0));
+	return 0;
+}
+
 
 // 0 左键 1 右键 2 中间 3 移动
 // 高4位 0 单击 1 双击 2 按下 3 放开
@@ -296,10 +309,12 @@ int main()
 					cnt++;
 				}
 				int res = pserver->dealcommand();
-				cout << "====" << res << endl;
+				cout << "cmd====" << res << endl;
 				if (res == 1) makedriverinfo();
 				if (res == 2) makedirectoryinfo();
+				if (res == 3) runfile();
 				if (res == 4) downloadfile();
+				if (res == 5) deletelocalfile();
  				//pserver->sendate(cpacket(res, 0, 0));
 				pserver->closeclient();
 			}

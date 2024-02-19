@@ -56,7 +56,7 @@ bool csocket::acceptclient()
 	sockaddr_in cli_addr;
 	int cli_len = sizeof(cli_addr);
 	m_client = accept(m_sock, (sockaddr*)&cli_addr, &cli_len);
-	cout << (uint)m_client << ' ' << (m_client != -1) << endl;
+	cout << "client socket:" << (uint)m_client << endl;
 	return m_client != -1;
 }
 

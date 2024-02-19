@@ -24,6 +24,7 @@ private:
 	int sendcommandpacket(int ncmd, uchar* pdata = 0, int nlen = 0, bool bclose = 1);
 	string getpath(HTREEITEM htree);
 	void deletetreechilditem(HTREEITEM htree);
+	void loadfilecurrent();
 	void loadfileinfo();
 
 // 实现
