@@ -24,6 +24,7 @@ private:
 	int sendcommandpacket(int ncmd, uchar* pdata = 0, int nlen = 0, bool bclose = 1);
 	string getpath(HTREEITEM htree);
 	void deletetreechilditem(HTREEITEM htree);
+	void loadfileinfo();
 
 // 实现
 protected:
@@ -37,11 +38,13 @@ protected:
 	DECLARE_MESSAGE_MAP()
 public:
 	afx_msg void OnBnClickedBtnTest();
-	afx_msg void OnEnChangeEdit1();
 	DWORD m_server_address;
 	CString m_nport;
-	afx_msg void OnTvnSelchangedTree1(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnBnClickedBtnFileinfo();
 	CTreeCtrl m_tree;
 	afx_msg void OnNMDblclkTreeDir(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnNMClickTreeDir(NMHDR* pNMHDR, LRESULT* pResult);
+	// 显示文件
+	CListCtrl m_list;
+	afx_msg void OnNMRClickListFile(NMHDR* pNMHDR, LRESULT* pResult);
 };
