@@ -95,13 +95,15 @@ int downloadfile()
 		pserver->sendate(cpacket(4, 0, 0));
 		return -1;
 	}
-	/*ll dlen = 0;
+
+	ll dlen = 0;
 	fseek(pfile, 0, SEEK_END);
 	dlen = _ftelli64(pfile);
 	pserver->sendate(cpacket(4, (uchar*)&dlen, 8));
-	fseek(pfile, 0, SEEK_SET);*/
+	fseek(pfile, 0, SEEK_SET);
+
 	char buf[1024] = "";
-	while (1)
+	while (dlen)
 	{
 		int len = fread(buf, 1, 1024, pfile);
 		pserver->sendate(cpacket(4, (uchar*)buf, len));
@@ -198,6 +200,7 @@ int sendscreen()
 	HRESULT ret = CreateStreamOnHGlobal(hmem, true, &pstream);
 
 	screen.Save(pstream, Gdiplus::ImageFormatJPEG);
+	//screen.Save(_T("a.jpeg"), Gdiplus::ImageFormatJPEG);
 	LARGE_INTEGER bg = { 0 };
 	pstream->Seek(bg, STREAM_SEEK_SET, NULL);
 	uchar* pdata = (uchar*)GlobalLock(hmem);
@@ -315,6 +318,7 @@ int main()
 				if (res == 3) runfile();
 				if (res == 4) downloadfile();
 				if (res == 5) deletelocalfile();
+				if (res == 6) sendscreen();
  				//pserver->sendate(cpacket(res, 0, 0));
 				pserver->closeclient();
 			}

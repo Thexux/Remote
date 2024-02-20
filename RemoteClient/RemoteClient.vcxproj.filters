@@ -39,6 +39,12 @@
     <ClInclude Include="common.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="statusdlg.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="watchdlg.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="RemoteClient.cpp">
@@ -51,6 +57,12 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="clientsocket.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="statusdlg.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="watchdlg.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>

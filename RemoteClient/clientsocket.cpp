@@ -2,6 +2,8 @@
 #include "clientsocket.h"
 #include"common.h"
 
+const int BUF_SIZE = 409600;
+
 csocket* csocket::m_csock = 0;
 //csocket* pclient = csocket::getsocket();
 csocket::chelper csocket::m_help;
@@ -12,7 +14,6 @@ csocket* csocket::getsocket()
 	return m_csock;
 }
 
-const int BUF_SIZE = 4096;
 csocket::csocket()
 {
 	WSADATA data;
@@ -41,7 +42,7 @@ bool csocket::init(int nip, int nport)
 	if (m_sock != -1) closesock();
 	m_sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (m_sock == -1) return 0;
-
+	cout << m_sock << endl;
 	sockaddr_in sev_addr;
 	memset(&sev_addr, 0, sizeof sev_addr);
 	sev_addr.sin_family = AF_INET;
