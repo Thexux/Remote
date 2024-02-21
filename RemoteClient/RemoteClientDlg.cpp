@@ -85,7 +85,7 @@ int CRemoteClientDlg::sendcommandpacket(int ncmd, uchar* pdata, int nlen, bool b
 
 	int cmd = pclient->dealcommand();
 	
-	TRACE("ack:%d\r\n", cmd);
+	cout << "ack:" << cmd << endl;
 	if (bclose) pclient->closesock();
 	return cmd;
 }
@@ -203,7 +203,7 @@ HCURSOR CRemoteClientDlg::OnQueryDragIcon()
 
 void CRemoteClientDlg::OnBnClickedBtnTest()
 {
-	sendcommandpacket(1981);
+	sendcommandpacket(505);
 }
 
 void CRemoteClientDlg::OnBnClickedBtnFileinfo()
@@ -384,12 +384,13 @@ void CRemoteClientDlg::threadentryforwatchdata(void* arg)
 
 void CRemoteClientDlg::threadwatchdata()
 {
+	// 可能存在异步问题，导致程序崩溃
 	Sleep(50);
 	csocket* pclient = 0;
 	while (pclient == 0) pclient = csocket::getsocket();
 
 	ULONGLONG tick = GetTickCount64();
-	for (;;)
+	while (m_isclose == 0)
 	{
 		//if (GetTickCount64() - tick < 150) Sleep(GetTickCount64() - tick);
 		/*bool ok = pclient->sendate(cpacket(6, 0, 0));
@@ -419,6 +420,7 @@ void CRemoteClientDlg::threadwatchdata()
 				pstream->Write(pdata, pclient->getpacket().strbuf.size(), &len);
 				LARGE_INTEGER bg = { 0 };
 				pstream->Seek(bg, STREAM_SEEK_SET, NULL);
+				m_image.Destroy();
 				m_image.Load(pstream);
 				//m_image.Save(_T("b.jpeg"), Gdiplus::ImageFormatJPEG);
 				m_isfull = 1;
@@ -506,6 +508,8 @@ void CRemoteClientDlg::OnRunFile()
 
 LRESULT CRemoteClientDlg::OnSendPacket(WPARAM wPram, LPARAM lParm)
 {
+	if (wPram >> 1 == 7) sendcommandpacket(wPram >> 1, (uchar*)lParm, sizeof(MOUSEV), wPram & 1);
+	
 	string strfile = lParm ? (LPCSTR)lParm : "";
 	return sendcommandpacket(wPram >> 1, (uchar*)strfile.c_str(), strfile.size(), wPram & 1);
 }
@@ -513,9 +517,12 @@ LRESULT CRemoteClientDlg::OnSendPacket(WPARAM wPram, LPARAM lParm)
 
 void CRemoteClientDlg::OnBnClickedBtnStartWatch()
 {
+	m_isclose = 0;
 	cwatchdlg dlg(this);
-	_beginthread(CRemoteClientDlg::threadentryforwatchdata, 0, this);
+	HANDLE hthread = (HANDLE)_beginthread(CRemoteClientDlg::threadentryforwatchdata, 0, this);
 	dlg.DoModal();
+	m_isclose = 1;
+	WaitForSingleObject(hthread, 500);
 }
 
 

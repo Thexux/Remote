@@ -180,7 +180,7 @@ int mousevent()
 	MOUSEV ev = pserver->getmousevent();
 	int flag = (1 << ev.sbtn) | (1 << ev.sact << 4);
 	mousevcheck(flag, ev.pt.x, ev.pt.y);
-	pserver->sendate(cpacket(4, 0, 0));
+	pserver->sendate(cpacket(7, 0, 0));
 	
 	return 0;
 }
@@ -193,13 +193,14 @@ int sendscreen()
 	int nwidth = GetDeviceCaps(hscreen, HORZRES);
 	int nheight = GetDeviceCaps(hscreen, VERTRES);
 	screen.Create(nwidth, nheight, nbitpixel);
-	BitBlt(screen.GetDC(), 0, 0, 1920, 1080, hscreen, 0, 0, SRCCOPY);
+	BitBlt(screen.GetDC(), 0, 0, nwidth, nheight, hscreen, 0, 0, SRCCOPY);
 	ReleaseDC(NULL, hscreen);
 	HGLOBAL hmem = GlobalAlloc(GMEM_MOVEABLE, 0);
 	IStream* pstream = NULL;
 	HRESULT ret = CreateStreamOnHGlobal(hmem, true, &pstream);
 
 	screen.Save(pstream, Gdiplus::ImageFormatJPEG);
+	//screen.Save(pstream, Gdiplus::ImageFormatPNG);
 	//screen.Save(_T("a.jpeg"), Gdiplus::ImageFormatJPEG);
 	LARGE_INTEGER bg = { 0 };
 	pstream->Seek(bg, STREAM_SEEK_SET, NULL);
@@ -319,7 +320,8 @@ int main()
 				if (res == 4) downloadfile();
 				if (res == 5) deletelocalfile();
 				if (res == 6) sendscreen();
- 				//pserver->sendate(cpacket(res, 0, 0));
+				if (res == 7) mousevent();
+ 				if (res == 505) pserver->sendate(cpacket(res, 0, 0));
 				pserver->closeclient();
 			}
 

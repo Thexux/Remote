@@ -40,6 +40,7 @@ public:
 private:
 	CImage m_image; // 缓存
 	bool m_isfull; // 缓存是否有数据 1为有 0为无
+	bool m_isclose; // 监控线程状态
 
 	int sendcommandpacket(int ncmd, uchar* pdata = 0, int nlen = 0, bool bclose = 1);
 	string getpath(HTREEITEM htree);

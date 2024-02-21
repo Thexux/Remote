@@ -2,7 +2,7 @@
 #include "clientsocket.h"
 #include"common.h"
 
-const int BUF_SIZE = 409600;
+const int BUF_SIZE = 2048000;
 
 csocket* csocket::m_csock = 0;
 //csocket* pclient = csocket::getsocket();
@@ -75,7 +75,7 @@ int csocket::dealcommand()
 	if (m_sock == -1) return -1;
 
 	char* buf = vbuf.data();
-	if (nbufidx == 0) memset(buf, 0, sizeof buf), nbufidx = 0;
+	//if (nbufidx == 0) memset(buf, 0, sizeof buf), nbufidx = 0;
 	while (1)
 	{
 		int len = nbufidx;
