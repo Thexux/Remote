@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<XPD:PROJECT xmlns:XPD="http://www.staruml.com" version="1">
+<XPD:HEADER>
+<XPD:SUBUNITS>
+</XPD:SUBUNITS>
+<XPD:PROFILES>
+</XPD:PROFILES>
+</XPD:HEADER>
+<XPD:BODY>
+<XPD:OBJ name="DocumentElement" type="UMLProject" guid="61npUEXgi0S5H32N4eT1hgAA">
+<XPD:ATTR name="Title" type="string">远程控制系统设计</XPD:ATTR>
+<XPD:ATTR name="Author" type="string">Thexu</XPD:ATTR>
+<XPD:ATTR name="#OwnedElements" type="integer">2</XPD:ATTR>
+<XPD:OBJ name="OwnedElements[0]" type="UMLPackage" guid="I6u9PGg4WEKGPDb2iKGiCQAA">
+<XPD:ATTR name="Name" type="string">RmoteCtrl</XPD:ATTR>
+<XPD:REF name="Namespace">61npUEXgi0S5H32N4eT1hgAA</XPD:REF>
+<XPD:ATTR name="#OwnedElements" type="integer">1</XPD:ATTR>
+<XPD:OBJ name="OwnedElements[0]" type="UMLClass" guid="FX0JxIlnCESvldOxTTWVewAA">
+<XPD:ATTR name="Name" type="string">global</XPD:ATTR>
+<XPD:ATTR name="Documentation" type="string">此类中的函数/变量，均是全局函数/变量</XPD:ATTR>
+<XPD:REF name="Namespace">I6u9PGg4WEKGPDb2iKGiCQAA</XPD:REF>
+</XPD:OBJ>
+</XPD:OBJ>
+<XPD:OBJ name="OwnedElements[1]" type="UMLPackage" guid="W5is0BjDMkyUDvHMWkMkcgAA">
+<XPD:ATTR name="Name" type="string">RmoteClient</XPD:ATTR>
+<XPD:REF name="Namespace">61npUEXgi0S5H32N4eT1hgAA</XPD:REF>
+</XPD:OBJ>
+</XPD:OBJ>
+</XPD:BODY>
+</XPD:PROJECT>
