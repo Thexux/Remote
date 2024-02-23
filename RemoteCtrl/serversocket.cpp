@@ -36,7 +36,7 @@ csocket::~csocket()
 	WSACleanup();
 }
 
-bool csocket::init()
+bool csocket::init(short port)
 {
 	if (m_sock == -1) return 0;
 
@@ -44,11 +44,39 @@ bool csocket::init()
 	memset(&sev_addr, 0, sizeof sev_addr);
 	sev_addr.sin_family = AF_INET;
 	sev_addr.sin_addr.s_addr = INADDR_ANY;
-	sev_addr.sin_port = htons(9527);
+	sev_addr.sin_port = htons(port);
 	if (bind(m_sock, (sockaddr*)&sev_addr, sizeof sev_addr) == SOCKET_ERROR) return 0;
 	if (listen(m_sock, 1) == -1) return 0;
-
 	return 1;
+}
+
+int csocket::run(SOCKET_CALLBACK callback, void* arg, short port)
+{
+	m_callback = callback;
+	m_arg = arg;
+	if (init(port) == 0) return -1;
+	list<cpacket> lstpacket;
+	int cnt = 0;
+	while (1)
+	{
+		cout << "==========开始等待连接=============" << endl;
+		if (acceptclient() == 0)
+		{
+			if (cnt > 3) return -2;
+			cnt++;
+			continue;
+		}
+		cnt = 0;
+		int res = dealcommand();
+		if (res > 0)
+		{
+			m_callback(m_arg, res, lstpacket, m_packet);
+			while (lstpacket.size()) sendate(lstpacket.front()), lstpacket.pop_front();
+		}
+		closeclient();
+	}
+
+	return 0;
 }
 
 bool csocket::acceptclient()
@@ -90,6 +118,7 @@ int csocket::dealcommand()
 
 void csocket::closeclient()
 {
+	if (m_client == INVALID_SOCKET) return;
 	closesocket(m_client);
 	m_client = INVALID_SOCKET;
 }
@@ -146,87 +175,4 @@ csocket::chelper::chelper()
 csocket::chelper::~chelper()
 {
 	csocket::releasesock();
-}
-
-cpacket::cpacket()
-{
-}
-
-cpacket::cpacket(const uchar* pdata, int& nsize)
-{
-	uint idx = 1;
-	while (idx < nsize) if (pdata[idx] << 8 | pdata[idx - 1]  == 0xFEFF) break;
-
-	if (++idx + 4 + 4 + 2 > nsize)
-	{
-		nsize = 0;
-		return;
-	}
-
-	nlen = *(int*)&pdata[idx], idx += 4;
-
-	if (nlen + idx - 1 > nsize)
-	{
-		nsize = 0;
-		return;
-	}
-
-	scmd = *(us*)&pdata[idx], idx += 2;
-
-	int sum = 0;
-	strbuf = "";
-	while (idx + 4 < nsize) sum += pdata[idx], strbuf += pdata[idx++];
-
-	nsum = *(int*)&pdata[idx], idx += 4;
-
-	if (sum == nsum) nsize = idx;
-	else nsize = 0;
-}
-
-cpacket::cpacket(const cpacket& cp)
-{
-	shead = cp.shead;
-	nlen = cp.nlen;
-	scmd = cp.scmd;
-	strbuf = cp.strbuf;
-	nsum = cp.nsum;
-}
-
-cpacket::cpacket(us cmd, const uchar* pdata, int nsize)
-{
-	shead = 0xFEFF, nlen = nsize + 6, scmd = cmd, nsum = 0, strbuf = "";
-	for (int i = 0; i < nsize; i++) nsum += pdata[i], strbuf += pdata[i];
-
-	//cout << "======" << nlen << ' ' << scmd << ' ' << strbuf << ' ' << nsum << endl;
-}
-
-cpacket& cpacket::operator=(const cpacket& cp)
-{
-	shead =cp.shead; 
-	nlen = cp.nlen; 
-	scmd = cp.scmd;
-	strbuf = cp.strbuf;
-	nsum = cp.nsum;
-	return *this;
-}
-
-int cpacket::size()
-{
-	return nlen + 6;
-}
-
-const char* cpacket::data()
-{
-	strout.resize(nlen + 6);
-	uchar* pdata = (uchar*)strout.c_str();
-	*(us*)pdata = shead, pdata += 2;
-	*(int*)pdata = nlen, pdata += 4;
-	*(us*)pdata = scmd, pdata += 2;
-	memcpy(pdata, strbuf.c_str(), strbuf.size()), pdata += strbuf.size();
-	*(int*)pdata = nsum;
-	return strout.c_str();
-}
-
-cpacket::~cpacket()
-{
 }

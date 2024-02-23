@@ -152,7 +152,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="command.h" />
     <ClInclude Include="common.h" />
+    <ClInclude Include="packet.h" />
+    <ClInclude Include="tool.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="lockdialog.h" />
     <ClInclude Include="pch.h" />
@@ -162,6 +165,9 @@
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="command.cpp" />
+    <ClCompile Include="packet.cpp" />
+    <ClCompile Include="tool.cpp" />
     <ClCompile Include="lockdialog.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
