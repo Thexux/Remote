@@ -16,11 +16,10 @@ protected:
 	int dealcommand();
 	void closeclient();
 	bool sendate(const char* pdata, uint nsize);
-	//bool sendate(cpacket& pack);
-	bool sendate(cpacket pack);
-	cpacket& getpacket();
-	string getfilepath();
-	MOUSEV getmousevent();
+	bool sendate(cpacket& pack);
+	//cpacket& getpacket();
+	//string getfilepath();
+	//MOUSEV getmousevent();
 
 private:
 	SOCKET_CALLBACK m_callback;

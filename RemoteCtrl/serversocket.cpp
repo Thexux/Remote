@@ -130,32 +130,26 @@ bool csocket::sendate(const char* pdata, uint nsize)
 	
 }
 
-//bool csocket::sendate(cpacket& pack)
-//{
-//	if (m_client == -1) return 0;
-//	return send(m_client, pack.data(), pack.size(), 0) > 0;
-//}
-
-bool csocket::sendate(cpacket pack)
+bool csocket::sendate(cpacket& pack)
 {
 	if (m_client == -1) return 0;
 	return send(m_client, pack.data(), pack.size(), 0) > 0;
 }
 
-cpacket& csocket::getpacket()
-{
-	return m_packet;
-}
-
-string csocket::getfilepath()
-{
-	return m_packet.strbuf;
-}
-
-MOUSEV csocket::getmousevent()
-{
-	return *(MOUSEV*)m_packet.strbuf.c_str();
-}
+//cpacket& csocket::getpacket()
+//{
+//	return m_packet;
+//}
+//
+//string csocket::getfilepath()
+//{
+//	return m_packet.strbuf;
+//}
+//
+//MOUSEV csocket::getmousevent()
+//{
+//	return *(MOUSEV*)m_packet.strbuf.c_str();
+//}
  
 void csocket::releasesock()
 {

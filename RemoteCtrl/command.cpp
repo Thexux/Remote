@@ -20,7 +20,7 @@ ccommand::ccommand(): threadid(0)
 		{-1, 0},
 	};
 
-	for (int i = 0; i < data[i].ncmd != -1; i++)
+	for (int i = 0; data[i].ncmd != -1; i++)
 		m_mpfunction[data[i].ncmd] = data[i].func;
 }
 

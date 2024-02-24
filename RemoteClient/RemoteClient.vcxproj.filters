@@ -45,6 +45,9 @@
     <ClInclude Include="watchdlg.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="clientcontroller.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="RemoteClient.cpp">
@@ -63,6 +66,9 @@
       <Filter>源文件</Filter>
     </ClCompile>
     <ClCompile Include="watchdlg.cpp">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="clientcontroller.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
   </ItemGroup>
