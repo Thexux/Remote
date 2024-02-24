@@ -6,8 +6,6 @@
 #include "watchdlg.h"
 #pragma once
 
-#define WM_SEND_PACKET WM_USER + 1
-
 // CRemoteClientDlg 对话框
 class CRemoteClientDlg : public CDialogEx
 {
@@ -24,33 +22,17 @@ public:
 	virtual void DoDataExchange(CDataExchange* pDX);	// DDX/DDV 支持
 
 public:
-	bool isfull() const
-	{
-		return m_isfull;
-	}
 	CImage& getimage()
 	{
 		return m_image;
 	}
-	void setimagestatus(bool isfull = 0)
-	{
-		m_isfull = isfull;
-	}
-
 private:
 	CImage m_image; // 缓存
-	bool m_isfull; // 缓存是否有数据 1为有 0为无
-	bool m_isclose; // 监控线程状态
 
-	int sendcommandpacket(int ncmd, uchar* pdata = 0, int nlen = 0, bool bclose = 1);
 	string getpath(HTREEITEM htree);
 	void deletetreechilditem(HTREEITEM htree);
 	void loadfilecurrent();
 	void loadfileinfo();
-	static void threadentryfordownload(void* arg);
-	void threadfordownload();
-	static void threadentryforwatchdata(void* arg);
-	void threadwatchdata();
 
 // 实现
 protected:
@@ -77,7 +59,8 @@ public:
 	afx_msg void OnDownloadFile();
 	afx_msg void OnDeleteFile();
 	afx_msg void OnRunFile();
-	afx_msg LRESULT OnSendPacket(WPARAM wPram, LPARAM lParm);
 	afx_msg void OnBnClickedBtnStartWatch();
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
+	afx_msg void OnIpnFieldchangedIpaddrServ(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnEnChangeEditPort();
 };

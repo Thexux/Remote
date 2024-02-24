@@ -194,6 +194,7 @@
     <ClInclude Include="Resource.h" />
     <ClInclude Include="statusdlg.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="tool.h" />
     <ClInclude Include="watchdlg.h" />
   </ItemGroup>
   <ItemGroup>

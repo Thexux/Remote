@@ -1,6 +1,6 @@
 #include "pch.h"
 #include "clientsocket.h"
-#include"common.h"
+#include "common.h"
 
 const int BUF_SIZE = 2048000;
 
@@ -24,11 +24,12 @@ csocket::csocket()
 	}
 	vbuf.resize(BUF_SIZE);
 	nbufidx = 0;
+	m_nip = INADDR_ANY;
+	m_nport = 0;
 }
 
 csocket::csocket(const csocket& cs)
 {
-
 }
 
 csocket::~csocket()
@@ -37,7 +38,7 @@ csocket::~csocket()
 	WSACleanup();
 }
 
-bool csocket::init(int nip, int nport)
+bool csocket::init()
 {
 	if (m_sock != -1) closesock();
 	m_sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -46,8 +47,8 @@ bool csocket::init(int nip, int nport)
 	sockaddr_in sev_addr;
 	memset(&sev_addr, 0, sizeof sev_addr);
 	sev_addr.sin_family = AF_INET;
-	sev_addr.sin_addr.s_addr = htonl(nip);
-	sev_addr.sin_port = htons(nport);
+	sev_addr.sin_addr.s_addr = htonl(m_nip);
+	sev_addr.sin_port = htons(m_nport);
 	if (sev_addr.sin_addr.s_addr == INADDR_NONE)
 	{
 		AfxMessageBox("指定IP地址，不存在");
@@ -62,6 +63,11 @@ bool csocket::init(int nip, int nport)
 		return 0;
 	}
 	return 1;
+}
+
+void csocket::updateaddr(int nip, int nport)
+{
+	m_nip = nip, m_nport = nport;
 }
 
 void csocket::closesock()
@@ -109,8 +115,7 @@ bool csocket::sendate(const char* pdata, uint nsize)
 bool csocket::sendate(cpacket pack)
 {
 	if (m_sock == -1) return 0;
-	int res = send(m_sock, pack.data(), pack.size(), 0);
-	return 1;
+	return send(m_sock, pack.data(), pack.size(), 0) > 0;
 }
 
 cpacket& csocket::getpacket()

@@ -17,10 +17,22 @@ public:
 #endif
 
 public:
+	bool isfull() const
+	{
+		return m_isfull;
+	}
+	void setimagestatus(bool isfull = 0)
+	{
+		m_isfull = isfull;
+	}
+
+protected:
 	int m_obj_width;
 	int m_obj_height;
 
-protected:
+	bool m_isfull; // 缓存是否有数据 1为有 0为无
+	bool m_isclose; // 监控线程状态
+
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 支持
 
 	DECLARE_MESSAGE_MAP()

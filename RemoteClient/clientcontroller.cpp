@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "clientcontroller.h"
+#include "tool.h"
 
 map<UINT, cclientcontroller::MSGFUNC> cclientcontroller::m_mpfunc;
 cclientcontroller* cclientcontroller::m_instance = NULL;
@@ -34,6 +35,9 @@ cclientcontroller::cclientcontroller():
 	m_statusdlg(&m_remotedig),
 	m_watchdlg(&m_remotedig)
 {
+	m_isclose = 1;
+	m_threadwatch = INVALID_HANDLE_VALUE;
+	m_threaddownload = INVALID_HANDLE_VALUE;
 	m_hthread = INVALID_HANDLE_VALUE;
 	m_nthreadid = -1;
 }
@@ -64,6 +68,157 @@ LRESULT cclientcontroller::SendMessage(MSG nmsg)
 	return info.res;
 }
 
+void cclientcontroller::updateaddr(int nip, int nport)
+{
+	csocket::getsocket()->updateaddr(nip, nport);
+}
+
+int cclientcontroller::dealcommand()
+{
+	return csocket::getsocket()->dealcommand();
+}
+
+void cclientcontroller::closesock()
+{
+	csocket::getsocket()->closesock();
+}
+
+bool cclientcontroller::sendpacket(const cpacket& pack)
+{
+	csocket* pclient = csocket::getsocket();
+	if (pclient->init() == 0) return 0;
+	return pclient->sendate(pack);
+}
+
+int cclientcontroller::sendcommandpacket(int ncmd, uchar* pdata, int nlen, bool bclose)
+{
+	csocket* pclient = csocket::getsocket();
+	if (pclient->init() == 0) return 0;
+	if (pclient->sendate(cpacket(ncmd, pdata, nlen)) == 0)
+	{
+		AfxMessageBox("发送消息失败");
+		return -1;
+	}
+	int cmd = dealcommand();
+	if (bclose) closesock();
+	return cmd;
+}
+
+int cclientcontroller::getimage(CImage& image)
+{
+	csocket* pclient = csocket::getsocket();
+	return ctool::btoimage(image, pclient->getpacket().strbuf);
+}
+
+void cclientcontroller::startwatchscreen()
+{
+	m_isclose = 0;
+	cwatchdlg dlg(&m_remotedig);
+	HANDLE hthread = (HANDLE)_beginthread(cclientcontroller::threadwatchentry, 0, this);
+	dlg.DoModal();
+	m_isclose = 1;
+	WaitForSingleObject(hthread, 500);
+}
+
+void cclientcontroller::threadwatchscreen()
+{
+	Sleep(50);
+	
+	while (m_isclose == 0)
+	{
+		if (m_watchdlg.isfull() == 0) // 更新数据到缓存
+		{
+			int cmd = sendcommandpacket(6);
+			if (cmd != 6)
+			{
+				Sleep(1);
+				continue;
+			}
+
+			if (getimage(m_remotedig.getimage()) == 0) m_watchdlg.setimagestatus(1);
+			else cout << "获取图像失败" << endl;
+		}
+		else Sleep(1);
+	}
+}
+
+void cclientcontroller::threadwatchentry(void* arg)
+{
+	cclientcontroller* pctl = (cclientcontroller*)arg;
+	pctl->threadwatchscreen();
+	_endthread();
+}
+
+void cclientcontroller::threaddownloadfile()
+{
+	FILE* pfile = fopen(m_strlocal.c_str(), "wb+");
+	if (pfile == 0)
+	{
+		AfxMessageBox("本地没有权限保存该文件，或这文件无法创建！！！");
+		m_statusdlg.ShowWindow(SW_HIDE);
+		m_remotedig.EndWaitCursor();
+		return;
+	}
+
+	int res = sendcommandpacket(4, (uchar*)m_strremote.c_str(), m_strremote.size(), 0);
+	if (res != 4)
+	{
+		AfxMessageBox("执行下载命令失败！！"), fclose(pfile), closesock();
+		return;
+	}
+
+	csocket* pclient = csocket::getsocket();
+	ll llen = *(ll*)pclient->getpacket().strbuf.c_str();
+
+	while (1)
+	{
+		us cmd = pclient->dealcommand();
+		if (cmd != 4)
+		{
+			AfxMessageBox("传输失败！！");
+			break;
+		}
+		if (pclient->getpacket().strbuf.size() == 0) break;
+		fwrite(pclient->getpacket().strbuf.c_str(), 1, pclient->getpacket().strbuf.size(), pfile);
+	}
+
+	fclose(pfile);
+	pclient->closesock();
+	m_statusdlg.ShowWindow(SW_HIDE);
+	m_remotedig.EndWaitCursor();
+	m_remotedig.MessageBox(_T("下载完成！！"), _T("完成"));
+}
+
+void cclientcontroller::threaddownloadentry(void* arg)
+{
+	cclientcontroller* pctl = (cclientcontroller*)arg;
+	pctl->threaddownloadfile();
+	_endthread();
+}
+
+int cclientcontroller::downflie(string strpath)
+{
+
+	CFileDialog dlg(FALSE, NULL, strpath.c_str(), // TODO: 保存文件名处理
+		OFN_HIDEREADONLY | OFN_OVERWRITEPROMPT, 0, &m_remotedig);
+
+	if (dlg.DoModal() != IDOK) return -1; // TODO: 返回值处理
+
+	m_strremote = strpath;
+	m_strlocal = dlg.GetPathName();
+
+	m_threaddownload = (HANDLE)_beginthread(&cclientcontroller::threaddownloadentry, 0, this);
+	if (WaitForSingleObject(m_threaddownload, 0) != WAIT_TIMEOUT) return -2; // 返回值处理
+
+	m_remotedig.BeginWaitCursor();
+	m_statusdlg.m_info.SetWindowText(_T("命令正在执行中"));
+	m_statusdlg.ShowWindow(SW_SHOW);
+	m_statusdlg.CenterWindow(&m_remotedig);
+	m_statusdlg.SetActiveWindow();
+
+	return 0;
+}
+	
 void cclientcontroller::threadfunc()
 {
 	MSG msg;
@@ -104,12 +259,14 @@ void cclientcontroller::releaseinstance()
 
 LRESULT cclientcontroller::onsendpack(UINT nmsg, WPARAM wparam, LPARAM lparam)
 {
-	return LRESULT();
+	csocket* pclient = csocket::getsocket();
+	return pclient->sendate(*(cpacket*)wparam);
 }
 
 LRESULT cclientcontroller::onsenddata(UINT nmsg, WPARAM wparam, LPARAM lparam)
 {
-	return LRESULT();
+	csocket* pclient = csocket::getsocket();
+	return pclient->sendate((char*)wparam, (int)lparam);
 }
 
 LRESULT cclientcontroller::onshowstatus(UINT nmsg, WPARAM wparam, LPARAM lparam)

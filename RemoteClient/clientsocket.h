@@ -44,7 +44,8 @@ class csocket
 {
 public:
 	static csocket* getsocket();
-	bool init(int nip, int nport);
+	bool init();
+	void updateaddr(int nip, int nort);
 	void closesock();
 	int dealcommand();
 	bool sendate(const char* pdata, uint nsize);
@@ -66,6 +67,8 @@ private:
 		chelper();
 		~chelper();
 	};
+	int m_nip;
+	int m_nport;
 	vector<char> vbuf;
 	int nbufidx;
 	static csocket* m_csock;
