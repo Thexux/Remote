@@ -23,11 +23,10 @@ public:
 	void updateaddr(int nip, int nport); //更新服务器地址
 	int dealcommand();
 	void closesock();
-	bool sendpacket(const cpacket& pack);
 	int sendcommandpacket(int ncmd,
 		uchar* pdata = NULL,
 		int nlen = 0,
-		bool bclose = 1);
+		list<cpacket>*lstpack = NULL);
 	int getimage(CImage& image);
 	int downflie(string strpath);
 	void startwatchscreen();
@@ -39,8 +38,8 @@ protected:
 	static unsigned __stdcall threadentry(void*);
 	static void releaseinstance();
 
-	LRESULT onsendpack(UINT nmsg, WPARAM wparam, LPARAM lparam);
-	LRESULT onsenddata(UINT nmsg, WPARAM wparam, LPARAM lparam);
+	/*LRESULT onsendpack(UINT nmsg, WPARAM wparam, LPARAM lparam);
+	LRESULT onsenddata(UINT nmsg, WPARAM wparam, LPARAM lparam);*/
 	LRESULT onshowstatus(UINT nmsg, WPARAM wparam, LPARAM lparam);
 	LRESULT onshowwatcher(UINT nmsg, WPARAM wparam, LPARAM lparam);
 
@@ -78,13 +77,14 @@ private:
 	public:
 		chelper()
 		{
-			getinstance();
+			//getinstance();
 		}
 		~chelper()
 		{
 			releaseinstance();
 		}
 	};
+	static chelper m_helper;
 
 	typedef LRESULT(cclientcontroller::* MSGFUNC)
 		(UINT nmsg, WPARAM wparam, LPARAM lparam);

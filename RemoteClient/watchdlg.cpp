@@ -70,25 +70,22 @@ void cwatchdlg::OnTimer(UINT_PTR nIDEvent)
 { 
 	if (nIDEvent == 0)
 	{
-		cclientcontroller* pparent = cclientcontroller::getinstance();
+		//cclientcontroller* pparent = cclientcontroller::getinstance();
 		//CRemoteClientDlg* pparent = (CRemoteClientDlg*)GetParent();
 		//cout << "Time now is full: " << pparent->isfull() << endl;
 		if (m_isfull)
 		{	
-			CImage image;
-			pparent->getimage(image);
-
 			CRect rect;
 			m_picture.GetWindowRect(rect);
 			//pparent->getimage().Save(_T("b.jpeg"), Gdiplus::ImageFormatJPEG);
 			//pparent->getimage().BitBlt(m_picture.GetDC()->GetSafeHdc(), 0, 0, SRCCOPY);
 
-			if (m_obj_width == -1) m_obj_width = image.GetWidth();
-			if (m_obj_height == -1) m_obj_height = image.GetHeight();
-			image.StretchBlt(m_picture.GetDC()->GetSafeHdc(),
+			m_obj_width = m_image.GetWidth();
+			m_obj_height = m_image.GetHeight();
+			m_image.StretchBlt(m_picture.GetDC()->GetSafeHdc(),
 				0, 0, rect.Width(), rect.Height(), SRCCOPY);
 			m_picture.InvalidateRect(NULL);
-			image.Destroy();
+			m_image.Destroy();
 
 			setimagestatus();
 		}

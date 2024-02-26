@@ -8,33 +8,29 @@ cpacket::cpacket()
 
 cpacket::cpacket(const uchar* pdata, int& nsize)
 {
-	uint idx = 1;
-	while (idx < nsize) if (pdata[idx] << 8 | pdata[idx - 1] == 0xFEFF) break;
+	int idx = 0, n = nsize;
+	nsize = 0;
 
-	if (++idx + 4 + 4 + 2 > nsize)
-	{
-		nsize = 0;
-		return;
-	}
+	if (idx + 2 >= n) return;
+	while (idx < n) if (*(us*)(pdata + idx++) == 0xFEFF) break;
 
-	nlen = *(int*)&pdata[idx], idx += 4;
+	if (idx + 4 >= n) return;
+	nlen = *(int*)&pdata[++idx], idx += 4;
+	int nstsize = nlen - 6;
 
-	if (nlen + idx - 1 > nsize)
-	{
-		nsize = 0;
-		return;
-	}
+	if (idx + nlen > n) return;
 
 	scmd = *(us*)&pdata[idx], idx += 2;
 
 	int sum = 0;
 	strbuf = "";
-	while (idx + 4 < nsize) sum += pdata[idx], strbuf += pdata[idx++];
+
+	for (int i = 0; i < nstsize; i++) sum += pdata[idx + i], strbuf += pdata[idx + i];
+	idx += nstsize;
 
 	nsum = *(int*)&pdata[idx], idx += 4;
 
-	if (sum == nsum) nsize = idx;
-	else nsize = 0;
+	if (nsum == sum) nsize = idx;
 }
 
 cpacket::cpacket(const cpacket& cp)

@@ -14,6 +14,56 @@ csocket* csocket::getsocket()
 	return m_csock;
 }
 
+void csocket::threadentry(void* arg)
+{
+	csocket* psock = (csocket*)arg;
+	psock->threadfunc();
+
+}
+
+void csocket::threadfunc()
+{
+	string strbuf;
+	strbuf.reserve(BUF_SIZE);
+	char* buf = (char*)strbuf.c_str();
+	int idx = 0;
+	while (1)
+	{
+		if (m_lstsend.size() == 0 || m_lstsend.front().shead != 0xfeff) continue;
+		
+		//Sleep(1);
+
+		cpacket& head = m_lstsend.front();
+		init();
+		if (sendate(head) == 0) continue; // TODO£∫¥ÌŒÛ¥¶¿Ì
+		
+		//while (1)
+		{
+			int len = recv(m_sock, buf + idx, BUF_SIZE - idx, 0);
+			//if (len <= 0) return -1;
+			idx += len;
+
+			len = idx;
+			cpacket pack((uchar*)buf, len);
+			if (len)
+			{
+				memmove(buf, buf + len, BUF_SIZE - len);
+				idx -= len;
+				m_mpack[head.hevent].push_back(pack);
+				SetEvent(head.hevent);
+			}
+
+			//len = recv(m_sock, buf + idx, BUF_SIZE - idx, 0);
+			////if (len <= 0) return -1;
+			//idx += len;
+		}
+		//closesock();
+		m_lstsend.pop_front();
+
+
+	}
+}
+
 csocket::csocket()
 {
 	WSADATA data;
@@ -26,6 +76,8 @@ csocket::csocket()
 	nbufidx = 0;
 	m_nip = INADDR_ANY;
 	m_nport = 0;
+	m_sock = -1;
+	m_lstsend.clear();
 }
 
 csocket::csocket(const csocket& cs)
@@ -206,13 +258,15 @@ cpacket::cpacket(const cpacket& cp)
 	scmd = cp.scmd;
 	strbuf = cp.strbuf;
 	nsum = cp.nsum;
+	hevent = cp.hevent;
 }
 
-cpacket::cpacket(us cmd, const uchar* pdata, int nsize)
+cpacket::cpacket(us cmd, const uchar* pdata, int nsize, HANDLE hevent)
 {
 	shead = 0xFEFF, nlen = nsize + 6, scmd = cmd, nsum = 0, strbuf = "";
 	for (int i = 0; i < nsize; i++) nsum += pdata[i], strbuf += pdata[i];
 
+	this->hevent = hevent;
 	//cout << "======" << nlen << ' ' << scmd << ' ' << pdata << ' ' << strbuf << ' ' << nsum << endl;
 }
 
@@ -223,6 +277,7 @@ cpacket& cpacket::operator=(const cpacket& cp)
 	scmd = cp.scmd;
 	strbuf = cp.strbuf;
 	nsum = cp.nsum;
+	hevent = cp.hevent;
 	return *this;
 }
 

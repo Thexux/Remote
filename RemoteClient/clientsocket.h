@@ -1,6 +1,6 @@
 #pragma once
 #include"common.h"
-
+#include "tool.h"
 const int FILESIZE = 256;
 
 struct FILEINFO
@@ -19,17 +19,18 @@ public:
 	cpacket();
 	cpacket(const uchar* pdata, int& nsize);
 	cpacket(const cpacket& cp);
-	cpacket(us cmd, const uchar* pdata, int nsize);
+	cpacket(us cmd, const uchar* pdata, int nsize, HANDLE hevent);
 	cpacket& operator=(const cpacket& cp);
 	int size();
 	const char* data();
 	~cpacket();
-	us shead = 0; //包头固定位 FE FF
+	us shead = 0XFEFF; //包头固定位 FE FF
 	int nlen = 0; // 包长度（从命令开始）
 	us scmd = 0; // 控制命令
 	string strbuf; // 包数据
 	int nsum = 0; // 和校验
 	string strout; // 整个包数据
+	HANDLE hevent;
 };
 //#pragma pack(pop)
 
@@ -47,19 +48,35 @@ public:
 	bool init();
 	void updateaddr(int nip, int nort);
 	void closesock();
+	bool sendpacket(const cpacket& pack, list<cpacket>& lstpacks)
+	{
+		if (m_sock == -1)
+		{
+			_beginthread(threadentry, 0, this);
+		}
+		m_lstsend.push_back(pack);
+		WaitForSingleObject(pack.hevent, INFINITE);
+		if (m_mpack.find(pack.hevent) == m_mpack.end()) return false; // TODO：错误处理
+		for (auto u : m_mpack[pack.hevent]) lstpacks.push_back(u);
+		
+		m_mpack.erase(m_mpack.find(pack.hevent));
+		return true;
+	}
 	int dealcommand();
-	bool sendate(const char* pdata, uint nsize);
-	//bool sendate(cpacket& pack);
-	bool sendate(cpacket pack);
 	cpacket& getpacket();
 	string getfilepath();
 	MOUSEV getmousevent();
 
 private:
+	static void threadentry(void* arg);
+	void threadfunc();
 	csocket();
 	csocket(const csocket&);
 	csocket& operator=(const csocket& cs);
 	~csocket();
+	bool sendate(const char* pdata, uint nsize);
+	//bool sendate(cpacket& pack);
+	bool sendate(cpacket pack);
 	static void releasesock();
 	class chelper
 	{
@@ -67,6 +84,8 @@ private:
 		chelper();
 		~chelper();
 	};
+	list<cpacket> m_lstsend;
+	map<HANDLE, list<cpacket>> m_mpack;
 	int m_nip;
 	int m_nport;
 	vector<char> vbuf;

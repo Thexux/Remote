@@ -25,6 +25,10 @@ public:
 	{
 		m_isfull = isfull;
 	}
+	CImage& getimage()
+	{
+		return m_image;
+	}
 
 protected:
 	int m_obj_width;
@@ -32,6 +36,7 @@ protected:
 
 	bool m_isfull; // 缓存是否有数据 1为有 0为无
 	bool m_isclose; // 监控线程状态
+	CImage m_image; // 缓存
 
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 支持
 

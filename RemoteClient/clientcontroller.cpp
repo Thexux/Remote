@@ -4,6 +4,7 @@
 
 map<UINT, cclientcontroller::MSGFUNC> cclientcontroller::m_mpfunc;
 cclientcontroller* cclientcontroller::m_instance = NULL;
+cclientcontroller::chelper cclientcontroller::m_helper;
 
 cclientcontroller* cclientcontroller::getinstance()
 {
@@ -16,8 +17,8 @@ cclientcontroller* cclientcontroller::getinstance()
 			MSGFUNC func;
 		} msga[] =
 		{
-			{WM_SNED_PACK, &onsendpack},
-			{WM_SNED_DATA, &onsenddata},
+		/*	{WM_SNED_PACK, &onsendpack},
+			{WM_SNED_DATA, &onsenddata},*/
 			{WM_SNED_STATUS, &onshowstatus},
 			{WM_SNED_WATCH, &onshowwatcher},
 			{(UINT)-1, 0}
@@ -83,25 +84,20 @@ void cclientcontroller::closesock()
 	csocket::getsocket()->closesock();
 }
 
-bool cclientcontroller::sendpacket(const cpacket& pack)
+int cclientcontroller::sendcommandpacket(int ncmd,
+	uchar* pdata, int nlen, list<cpacket>* plstpack)
 {
 	csocket* pclient = csocket::getsocket();
-	if (pclient->init() == 0) return 0;
-	return pclient->sendate(pack);
-}
-
-int cclientcontroller::sendcommandpacket(int ncmd, uchar* pdata, int nlen, bool bclose)
-{
-	csocket* pclient = csocket::getsocket();
-	if (pclient->init() == 0) return 0;
-	if (pclient->sendate(cpacket(ncmd, pdata, nlen)) == 0)
-	{
-		AfxMessageBox("发送消息失败");
-		return -1;
-	}
-	int cmd = dealcommand();
-	if (bclose) closesock();
-	return cmd;
+	//if (pclient->init() == 0) return false;
+	HANDLE hevent = CreateEvent(NULL, TRUE, FALSE, NULL);
+	list<cpacket> lstpack;
+	if (plstpack == 0) plstpack = &lstpack;
+	pclient->sendpacket(cpacket(ncmd, pdata, nlen, hevent), *plstpack);
+	CloseHandle(hevent);
+	//if (lstpack.size() == 0) return false; // TODO 错误处理
+	//cout << "=====" << lstpack.front().scmd << endl;
+	//cout << "====" << (*plstpack).size() << endl;
+	return (*plstpack).front().scmd;
 }
 
 int cclientcontroller::getimage(CImage& image)
@@ -113,9 +109,9 @@ int cclientcontroller::getimage(CImage& image)
 void cclientcontroller::startwatchscreen()
 {
 	m_isclose = 0;
-	cwatchdlg dlg(&m_remotedig);
+	//m_watchdlg.SetParent(&m_remotedig); //cwatchdlg dlg(&m_remotedig);
 	HANDLE hthread = (HANDLE)_beginthread(cclientcontroller::threadwatchentry, 0, this);
-	dlg.DoModal();
+	m_watchdlg.DoModal();
 	m_isclose = 1;
 	WaitForSingleObject(hthread, 500);
 }
@@ -128,14 +124,16 @@ void cclientcontroller::threadwatchscreen()
 	{
 		if (m_watchdlg.isfull() == 0) // 更新数据到缓存
 		{
-			int cmd = sendcommandpacket(6);
+			list<cpacket> lstpack;
+			int cmd = sendcommandpacket(6, 0, 0, &lstpack);
 			if (cmd != 6)
 			{
 				Sleep(1);
 				continue;
 			}
-
-			if (getimage(m_remotedig.getimage()) == 0) m_watchdlg.setimagestatus(1);
+			//cout << "++++" << lstpack.size() << endl;
+			if (ctool::btoimage(m_watchdlg.getimage(), lstpack.front().strbuf) == 0)
+				m_watchdlg.setimagestatus(1);
 			else cout << "获取图像失败" << endl;
 		}
 		else Sleep(1);
@@ -257,17 +255,17 @@ void cclientcontroller::releaseinstance()
 	if (m_instance) delete m_instance, m_instance = 0;
 }
 
-LRESULT cclientcontroller::onsendpack(UINT nmsg, WPARAM wparam, LPARAM lparam)
-{
-	csocket* pclient = csocket::getsocket();
-	return pclient->sendate(*(cpacket*)wparam);
-}
-
-LRESULT cclientcontroller::onsenddata(UINT nmsg, WPARAM wparam, LPARAM lparam)
-{
-	csocket* pclient = csocket::getsocket();
-	return pclient->sendate((char*)wparam, (int)lparam);
-}
+//LRESULT cclientcontroller::onsendpack(UINT nmsg, WPARAM wparam, LPARAM lparam)
+//{
+//	csocket* pclient = csocket::getsocket();
+//	return pclient->sendate(*(cpacket*)wparam);
+//}
+//
+//LRESULT cclientcontroller::onsenddata(UINT nmsg, WPARAM wparam, LPARAM lparam)
+//{
+//	csocket* pclient = csocket::getsocket();
+//	return pclient->sendate((char*)wparam, (int)lparam);
+//}
 
 LRESULT cclientcontroller::onshowstatus(UINT nmsg, WPARAM wparam, LPARAM lparam)
 {
