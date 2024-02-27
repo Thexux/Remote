@@ -94,10 +94,12 @@ int cclientcontroller::sendcommandpacket(int ncmd,
 	if (plstpack == 0) plstpack = &lstpack;
 	pclient->sendpacket(cpacket(ncmd, pdata, nlen, hevent), *plstpack);
 	CloseHandle(hevent);
-	//if (lstpack.size() == 0) return false; // TODO 错误处理
-	//cout << "=====" << lstpack.front().scmd << endl;
-	//cout << "====" << (*plstpack).size() << endl;
-	return (*plstpack).front().scmd;
+	if (plstpack->size() == 0)
+	{
+		cout << "plstpack->size() is empty" << endl;
+		return false; // TODO 错误处理
+	}
+	return plstpack->front().scmd;
 }
 
 int cclientcontroller::getimage(CImage& image)

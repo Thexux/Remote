@@ -1,5 +1,6 @@
 #pragma once
 #include"common.h"
+#include<mutex>
 #include "tool.h"
 const int FILESIZE = 256;
 
@@ -50,16 +51,19 @@ public:
 	void closesock();
 	bool sendpacket(const cpacket& pack, list<cpacket>& lstpacks)
 	{
-		if (m_sock == -1)
-		{
-			_beginthread(threadentry, 0, this);
-		}
+		cout << m_sock << endl;
+		if (m_sock == -1 && m_hthread == INVALID_HANDLE_VALUE)
+			m_hthread = (HANDLE)_beginthread(threadentry, 0, this); // TODO: 套接字关闭可能会多开
+		//TRACE("cmd %d, thread id %d\r\n", pack.scmd, GetCurrentThreadId());
+		mu_lock.lock();
 		m_lstsend.push_back(pack);
+		mu_lock.unlock();
 		WaitForSingleObject(pack.hevent, INFINITE);
 		if (m_mpack.find(pack.hevent) == m_mpack.end()) return false; // TODO：错误处理
 		for (auto u : m_mpack[pack.hevent]) lstpacks.push_back(u);
-		
+		mu_lock.lock();
 		m_mpack.erase(m_mpack.find(pack.hevent));
+		mu_lock.unlock();
 		return true;
 	}
 	int dealcommand();
@@ -68,6 +72,8 @@ public:
 	MOUSEV getmousevent();
 
 private:
+	HANDLE m_hthread;
+	std::mutex mu_lock;
 	static void threadentry(void* arg);
 	void threadfunc();
 	csocket();

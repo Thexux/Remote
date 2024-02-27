@@ -29,38 +29,47 @@ void csocket::threadfunc()
 	int idx = 0;
 	while (1)
 	{
-		if (m_lstsend.size() == 0 || m_lstsend.front().shead != 0xfeff) continue;
-		
-		//Sleep(1);
-
+		//if (m_lstsend.size() == 0 || m_lstsend.front().shead != 0xfeff) continue;
+		if (m_lstsend.size() == 0)
+		{
+			Sleep(1);
+			continue;
+		}
+		mu_lock.lock();
 		cpacket& head = m_lstsend.front();
+		mu_lock.unlock();
+		TRACE("cmd %d, thread id %d\r\n", m_lstsend.front().scmd, GetCurrentThreadId());
 		init();
 		if (sendate(head) == 0) continue; // TODO£∫¥ÌŒÛ¥¶¿Ì
 		
-		//while (1)
+		while (1)
 		{
-			int len = recv(m_sock, buf + idx, BUF_SIZE - idx, 0);
+			//int len = recv(m_sock, buf + idx, BUF_SIZE - idx, 0);
 			//if (len <= 0) return -1;
-			idx += len;
+			//idx += len;
 
-			len = idx;
+			int len = idx;
 			cpacket pack((uchar*)buf, len);
 			if (len)
 			{
 				memmove(buf, buf + len, BUF_SIZE - len);
 				idx -= len;
 				m_mpack[head.hevent].push_back(pack);
-				SetEvent(head.hevent);
+				continue;
 			}
 
-			//len = recv(m_sock, buf + idx, BUF_SIZE - idx, 0);
-			////if (len <= 0) return -1;
-			//idx += len;
+			len = recv(m_sock, buf + idx, BUF_SIZE - idx, 0);
+			if (len <= 0)
+			{
+				//closesock();
+				SetEvent(head.hevent);
+				break;
+			}
+			idx += len;
 		}
-		//closesock();
+		mu_lock.lock();
 		m_lstsend.pop_front();
-
-
+		mu_lock.unlock();
 	}
 }
 
@@ -78,6 +87,7 @@ csocket::csocket()
 	m_nport = 0;
 	m_sock = -1;
 	m_lstsend.clear();
+	m_hthread = INVALID_HANDLE_VALUE;
 }
 
 csocket::csocket(const csocket& cs)
@@ -95,7 +105,7 @@ bool csocket::init()
 	if (m_sock != -1) closesock();
 	m_sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (m_sock == -1) return 0;
-	cout << m_sock << endl;
+	cout << "m_sock:" << m_sock << endl;
 	sockaddr_in sev_addr;
 	memset(&sev_addr, 0, sizeof sev_addr);
 	sev_addr.sin_family = AF_INET;

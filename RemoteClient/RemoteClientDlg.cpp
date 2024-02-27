@@ -22,12 +22,12 @@ class CAboutDlg : public CDialogEx
 public:
 	CAboutDlg();
 
-// 对话框数据
+	// 对话框数据
 #ifdef AFX_DESIGN_TIME
 	enum { IDD = IDD_ABOUTBOX };
 #endif
 
-	protected:
+protected:
 	virtual void DoDataExchange(CDataExchange* pDX);    // DDX/DDV 支持
 
 // 实现
@@ -193,15 +193,16 @@ void CRemoteClientDlg::OnBnClickedBtnTest()
 
 void CRemoteClientDlg::OnBnClickedBtnFileinfo()
 {
-	// TODO: 在此添加控件通知处理程序代码
+	list<cpacket> lst;
 	cclientcontroller* pclientctl = cclientcontroller::getinstance();
-	int res = pclientctl->sendcommandpacket(1);
-	if (res == -1)
+	int res = pclientctl->sendcommandpacket(1, 0, 0, &lst);
+	if (res == -1 || lst.size() == 0)
 	{
 		AfxMessageBox(_T("命令处理失败！！！"));
 		return;
 	}
-	string strdata = pclient->getpacket().strbuf;
+	//string strdata = pclient->getpacket().strbuf;
+	string strdata = lst.front().strbuf;
 	string strt;
 	m_tree.DeleteAllItems();
 	for (int i = 0; i < strdata.size(); i++)
@@ -274,34 +275,23 @@ void CRemoteClientDlg::loadfileinfo()
 	m_list.DeleteAllItems();
 	string strpath = getpath(htree);
 	cclientcontroller* pclientctl = cclientcontroller::getinstance();
-	int cmd = pclientctl->sendcommandpacket(2, (uchar*)strpath.c_str(), strpath.size(), 0);
-	FILEINFO* pinfo = (FILEINFO*)pclient->getpacket().strbuf.c_str();
-
-	while (pinfo->hasnext)
+	list<cpacket> lst;
+	int cmd = pclientctl->sendcommandpacket(2, (uchar*)strpath.c_str(), strpath.size(), &lst);
+	if (cmd != 2 || lst.size() == 0) cout << "loadfileinfo is error"; // TODO：错误处理
+	for (auto u : lst)
 	{
+		FILEINFO* pinfo = (FILEINFO*)u.strbuf.c_str();
 		cout << pinfo->hasnext << ' ' << pinfo->isdirectory << ' ' << pinfo->filename << endl;
+		if (pinfo->hasnext == 0) break;
 		if (pinfo->isdirectory)
 		{
-			if (string(pinfo->filename) == "." || string(pinfo->filename) == "..")
-			{
-				int cmd = pclient->dealcommand();
-				TRACE("ack:&d\r\n", cmd);
-				if (cmd < 0) break;
-				pinfo = (FILEINFO*)pclient->getpacket().strbuf.c_str();
-				continue;
-
-			}
+			if (string(pinfo->filename) == "." || string(pinfo->filename) == "..") continue;
+			
 			HTREEITEM ht = m_tree.InsertItem(pinfo->filename, htree, TVI_LAST);
 			m_tree.InsertItem("", ht, TVI_LAST);
 		}
 		else m_list.InsertItem(0, pinfo->filename);
-		
-		cmd = pclient->dealcommand();
-		//cout << cmd << endl;
-		if (cmd < 0) break;
-		pinfo = (FILEINFO*)pclient->getpacket().strbuf.c_str();
 	}
-	pclient->closesock();
 }
 
 void CRemoteClientDlg::OnNMDblclkTreeDir(NMHDR* pNMHDR, LRESULT* pResult)
@@ -334,7 +324,7 @@ void CRemoteClientDlg::OnNMRClickListFile(NMHDR* pNMHDR, LRESULT* pResult)
 	menu.LoadMenu(IDR_MENU_RCLICK);
 	CMenu* ppop = menu.GetSubMenu(0);
 	if (ppop) ppop->TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, ptmouse.x, ptmouse.y, this);
-	
+
 
 }
 
