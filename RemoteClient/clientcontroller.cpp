@@ -17,8 +17,6 @@ cclientcontroller* cclientcontroller::getinstance()
 			MSGFUNC func;
 		} msga[] =
 		{
-		/*	{WM_SNED_PACK, &onsendpack},
-			{WM_SNED_DATA, &onsenddata},*/
 			{WM_SNED_STATUS, &onshowstatus},
 			{WM_SNED_WATCH, &onshowwatcher},
 			{(UINT)-1, 0}
@@ -38,7 +36,6 @@ cclientcontroller::cclientcontroller():
 {
 	m_isclose = 1;
 	m_threadwatch = INVALID_HANDLE_VALUE;
-	m_threaddownload = INVALID_HANDLE_VALUE;
 	m_hthread = INVALID_HANDLE_VALUE;
 	m_nthreadid = -1;
 }
@@ -58,30 +55,9 @@ int cclientcontroller::invoke(CWnd*& pMainWnd)
 	return m_remotedig.DoModal();
 }
 
-LRESULT cclientcontroller::SendMessage(MSG nmsg)
-{
-	HANDLE hevent = CreateEvent(0, 1, 0, 0);
-	if (hevent == 0) return -2;
-	MSGINFO info(nmsg);
-	PostThreadMessage(m_nthreadid, WM_SNED_MESSAGE, 
-		(WPARAM)&info, (LPARAM)&hevent);
-	WaitForSingleObject(hevent, -1);
-	return info.res;
-}
-
 void cclientcontroller::updateaddr(int nip, int nport)
 {
 	csocket::getsocket()->updateaddr(nip, nport);
-}
-
-int cclientcontroller::dealcommand()
-{
-	return csocket::getsocket()->dealcommand();
-}
-
-void cclientcontroller::closesock()
-{
-	csocket::getsocket()->closesock();
 }
 
 bool cclientcontroller::sendcommandpacket(HWND hwnd, 
@@ -91,16 +67,9 @@ bool cclientcontroller::sendcommandpacket(HWND hwnd,
 	return pclient->sendpacket(hwnd, cpacket(ncmd, pdata, nlen), wparam);
 }
 
-int cclientcontroller::getimage(CImage& image)
-{
-	csocket* pclient = csocket::getsocket();
-	return ctool::btoimage(image, pclient->getpacket().strbuf);
-}
-
 void cclientcontroller::startwatchscreen()
 {
 	m_isclose = 0;
-	//m_watchdlg.SetParent(&m_remotedig); //cwatchdlg dlg(&m_remotedig);
 	HANDLE hthread = (HANDLE)_beginthread(cclientcontroller::threadwatchentry, 0, this);
 	m_watchdlg.DoModal();
 	m_isclose = 1;
@@ -136,53 +105,6 @@ void cclientcontroller::threadwatchentry(void* arg)
 	_endthread();
 }
 
-void cclientcontroller::threaddownloadfile()
-{
-	FILE* pfile = fopen(m_strlocal.c_str(), "wb+");
-	if (pfile == 0)
-	{
-		AfxMessageBox("本地没有权限保存该文件，或这文件无法创建！！！");
-		m_statusdlg.ShowWindow(SW_HIDE);
-		m_remotedig.EndWaitCursor();
-		return;
-	}
-
-	int res = sendcommandpacket(m_statusdlg, 4, (uchar*)m_strremote.c_str(), m_strremote.size());
-	if (res != 4)
-	{
-		AfxMessageBox("执行下载命令失败！！"), fclose(pfile), closesock();
-		return;
-	}
-
-	csocket* pclient = csocket::getsocket();
-	ll llen = *(ll*)pclient->getpacket().strbuf.c_str();
-
-	while (1)
-	{
-		us cmd = pclient->dealcommand();
-		if (cmd != 4)
-		{
-			AfxMessageBox("传输失败！！");
-			break;
-		}
-		if (pclient->getpacket().strbuf.size() == 0) break;
-		fwrite(pclient->getpacket().strbuf.c_str(), 1, pclient->getpacket().strbuf.size(), pfile);
-	}
-
-	fclose(pfile);
-	pclient->closesock();
-	m_statusdlg.ShowWindow(SW_HIDE);
-	m_remotedig.EndWaitCursor();
-	m_remotedig.MessageBox(_T("下载完成！！"), _T("完成"));
-}
-
-void cclientcontroller::threaddownloadentry(void* arg)
-{
-	cclientcontroller* pctl = (cclientcontroller*)arg;
-	pctl->threaddownloadfile();
-	_endthread();
-}
-
 int cclientcontroller::downflie(string strpath)
 {
 
@@ -201,10 +123,6 @@ int cclientcontroller::downflie(string strpath)
 	}
 
 	bool ok = sendcommandpacket(m_remotedig, 4, (uchar*)m_strremote.c_str(), m_strremote.size(), (WPARAM)pfile);
-
-
-	//m_threaddownload = (HANDLE)_beginthread(&cclientcontroller::threaddownloadentry, 0, this);
-	//if (WaitForSingleObject(m_threaddownload, 0) != WAIT_TIMEOUT) return -2; // 返回值处理
 
 	m_remotedig.BeginWaitCursor();
 	m_statusdlg.m_info.SetWindowText(_T("命令正在执行中"));
@@ -252,18 +170,6 @@ void cclientcontroller::releaseinstance()
 {
 	if (m_instance) delete m_instance, m_instance = 0;
 }
-
-//LRESULT cclientcontroller::onsendpack(UINT nmsg, WPARAM wparam, LPARAM lparam)
-//{
-//	csocket* pclient = csocket::getsocket();
-//	return pclient->sendate(*(cpacket*)wparam);
-//}
-//
-//LRESULT cclientcontroller::onsenddata(UINT nmsg, WPARAM wparam, LPARAM lparam)
-//{
-//	csocket* pclient = csocket::getsocket();
-//	return pclient->sendate((char*)wparam, (int)lparam);
-//}
 
 LRESULT cclientcontroller::onshowstatus(UINT nmsg, WPARAM wparam, LPARAM lparam)
 {

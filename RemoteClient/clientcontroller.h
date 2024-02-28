@@ -19,17 +19,13 @@ public:
 	static cclientcontroller* getinstance(); // 获取全局唯一对象
 	int init(); // 初始化操作
 	int invoke(CWnd*& pMainWnd); // 启动
-	LRESULT SendMessage(MSG nmsg); // v层桥接
 	void updateaddr(int nip, int nport); //更新服务器地址
-	int dealcommand();
-	void closesock();
 	bool sendcommandpacket(
 		HWND hwnd, // 数据包收到后，需要应答的窗口
 		int ncmd,
 		uchar* pdata = NULL,
 		int nlen = 0,
 		WPARAM wparam = 0);
-	int getimage(CImage& image);
 	int downflie(string strpath);
 	void downloadend()
 	{
@@ -46,13 +42,8 @@ protected:
 	static unsigned __stdcall threadentry(void*);
 	static void releaseinstance();
 
-	/*LRESULT onsendpack(UINT nmsg, WPARAM wparam, LPARAM lparam);
-	LRESULT onsenddata(UINT nmsg, WPARAM wparam, LPARAM lparam);*/
 	LRESULT onshowstatus(UINT nmsg, WPARAM wparam, LPARAM lparam);
 	LRESULT onshowwatcher(UINT nmsg, WPARAM wparam, LPARAM lparam);
-
-	void threaddownloadfile();
-	static void threaddownloadentry(void* arg);
 
 	void threadwatchscreen();
 	static void threadwatchentry(void* arg);
@@ -83,10 +74,7 @@ private:
 	class chelper
 	{
 	public:
-		chelper()
-		{
-			//getinstance();
-		}
+		chelper() {}
 		~chelper()
 		{
 			releaseinstance();
@@ -103,7 +91,6 @@ private:
 	HANDLE m_hthread;
 	unsigned m_nthreadid;
 	static cclientcontroller* m_instance;
-	HANDLE m_threaddownload;
 	HANDLE m_threadwatch;
 	bool m_isclose; // 监控线程状态
 	string m_strremote; // 远程文件路径

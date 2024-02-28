@@ -58,8 +58,8 @@ CRemoteClientDlg::CRemoteClientDlg(CWnd* pParent /*=nullptr*/)
 	, m_nport(_T(""))
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
-	AllocConsole();
-	freopen("CONOUT$", "w", stdout);
+	/*AllocConsole();
+	freopen("CONOUT$", "w", stdout);*/
 }
 
 void CRemoteClientDlg::DoDataExchange(CDataExchange* pDX)
@@ -224,7 +224,7 @@ void CRemoteClientDlg::loadfilecurrent()
 	m_list.DeleteAllItems();
 	cclientcontroller* pclientctl = cclientcontroller::getinstance();
 	bool ok = pclientctl->sendcommandpacket(GetSafeHwnd(), 2, (uchar*)strpath.c_str(), strpath.size(), (WPARAM)htree);
-	if (ok == 0) cout << "loadfileinfo is error"; // TODO：错误处理
+	//if (ok == 0) cout << "loadfileinfo is error"; // TODO：错误处理
 }
 
 void CRemoteClientDlg::loadfileinfo()
@@ -234,13 +234,13 @@ void CRemoteClientDlg::loadfileinfo()
 	m_tree.ScreenToClient(&ptmouse);
 	HTREEITEM htree = m_tree.HitTest(ptmouse, 0);
 	if (htree == 0) return;
-	if (m_tree.GetChildItem(htree) == 0) return;
+	//if (m_tree.GetChildItem(htree) == 0) return;
 	deletetreechilditem(htree);
 	m_list.DeleteAllItems();
 	string strpath = getpath(htree);
 	cclientcontroller* pclientctl = cclientcontroller::getinstance();
 	bool ok = pclientctl->sendcommandpacket(GetSafeHwnd(), 2, (uchar*)strpath.c_str(), strpath.size(), (WPARAM)htree);
-	if (ok == 0) cout << "loadfileinfo is error"; // TODO：错误处理
+	//if (ok == 0) cout << "loadfileinfo is error"; // TODO：错误处理
 }
 
 void CRemoteClientDlg::inituidata()
@@ -378,7 +378,7 @@ void CRemoteClientDlg::strtotree(const string& strdata, CTreeCtrl& m_tree)
 }
 void CRemoteClientDlg::updatefileinfo(const FILEINFO& finfo, HTREEITEM hparent)
 {
-	cout << finfo.hasnext << ' ' << finfo.isdirectory << ' ' << finfo.filename << endl;
+	//cout << finfo.hasnext << ' ' << finfo.isdirectory << ' ' << finfo.filename << endl;
 	if (finfo.hasnext == 0) return;
 	if (finfo.isdirectory)
 	{
@@ -409,7 +409,7 @@ void CRemoteClientDlg::dealcommand(us ncmd, const string& strdata, LPARAM lParam
 	switch (ncmd)
 	{
 	case 505:
-		TRACE("connection success!\r\n");
+		MessageBox("连接成功!", "连接状态", MB_ICONINFORMATION);
 		break;
 	case 1: // 获取驱动信息
 		strtotree(strdata, m_tree);
@@ -418,13 +418,13 @@ void CRemoteClientDlg::dealcommand(us ncmd, const string& strdata, LPARAM lParam
 		updatefileinfo(*(FILEINFO*)strdata.c_str(), (HTREEITEM)lParam);
 		break;
 	case 3:
-		TRACE("run file done!\r\n");
+		MessageBox("文件已运行!", "文件状态", MB_ICONINFORMATION);
 		break;
 	case 4:
 		updatedownloadfile(strdata, (FILE*)lParam);
 		break;
 	case 5:
-		TRACE("delete file done!\r\n");
+		MessageBox("删除文件完成!", "文件状态", MB_ICONINFORMATION);
 		break;
 	default:
 		TRACE("unknow data received %d!\r\n", ncmd);

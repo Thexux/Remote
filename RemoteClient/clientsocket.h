@@ -70,8 +70,6 @@ struct packdata
 	}
 };
 
-
-
 class csocket
 {
 public:
@@ -79,31 +77,7 @@ public:
 	bool init();
 	void updateaddr(int nip, int nort);
 	void closesock();
-	//bool sendpacket(const cpacket& pack, list<cpacket>& lstpacks)
-	//{
-	//	cout << m_sock << endl;
-	//	if (m_sock == -1 && m_hthread == INVALID_HANDLE_VALUE)
-	//		m_hthread = (HANDLE)_beginthread(threadentry, 0, this); // TODO: 套接字关闭可能会多开
-	//	//TRACE("cmd %d, thread id %d\r\n", pack.scmd, GetCurrentThreadId());
-	//	mu_lock.lock();
-	//	m_lstsend.push_back(pack);
-	//	mu_lock.unlock();
-	//	WaitForSingleObject(pack.hevent, INFINITE);
-	//	if (m_mpack.find(pack.hevent) == m_mpack.end()) return false; // TODO：错误处理
-	//	for (auto u : m_mpack[pack.hevent]) lstpacks.push_back(u);
-	//	mu_lock.lock();
-	//	m_mpack.erase(m_mpack.find(pack.hevent));
-	//	mu_lock.unlock();
-	//	return true;
-	//}
-	bool sendpacket(HWND hwnd, cpacket pack, WPARAM wparam = 0)
-	{
-		packdata* pdata = new packdata(pack.data(), pack.size(), wparam);
-		bool res = PostThreadMessage(m_nthreadid, WM_SEND_PACK, (WPARAM)pdata, (LPARAM)hwnd);
-		if (res == 0) delete pdata;
-		return res;
-		
-	}
+	bool sendpacket(HWND hwnd, cpacket pack, WPARAM wparam = 0);
 	int dealcommand();
 	cpacket& getpacket();
 	string getfilepath();
@@ -119,14 +93,12 @@ private:
 	std::mutex mu_lock;
 	static unsigned __stdcall threadentry(void* arg);
 	void threadfunc();
-	void threadfunc2();
 	void sendpackmsg(UINT nmsg, WPARAM wparam/*缓冲区的值*/, LPARAM lparam/*句柄*/);
 	csocket();
 	csocket(const csocket&);
 	csocket& operator=(const csocket& cs);
 	~csocket();
 	bool sendate(const char* pdata, uint nsize);
-	//bool sendate(cpacket& pack);
 	bool sendate(cpacket pack);
 	static void releasesock();
 	class chelper
@@ -135,8 +107,6 @@ private:
 		chelper();
 		~chelper();
 	};
-	list<cpacket> m_lstsend;
-	map<HANDLE, list<cpacket>> m_mpack;
 	int m_nip;
 	int m_nport;
 	vector<char> vbuf;

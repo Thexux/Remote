@@ -15,65 +15,12 @@ csocket* csocket::getsocket()
 unsigned csocket::threadentry(void* arg)
 {
 	csocket* psock = (csocket*)arg;
-	psock->threadfunc2();
+	psock->threadfunc();
 	_endthreadex(0);
 	return 0;
-
 }
 
-//void csocket::threadfunc()
-//{
-//	string strbuf;
-//	strbuf.reserve(BUF_SIZE);
-//	char* buf = (char*)strbuf.c_str();
-//	int idx = 0;
-//	while (1)
-//	{
-//		//if (m_lstsend.size() == 0 || m_lstsend.front().shead != 0xfeff) continue;
-//		if (m_lstsend.size() == 0)
-//		{
-//			Sleep(1);
-//			continue;
-//		}
-//		mu_lock.lock();
-//		cpacket& head = m_lstsend.front();
-//		mu_lock.unlock();
-//		TRACE("cmd %d, thread id %d\r\n", m_lstsend.front().scmd, GetCurrentThreadId());
-//		init();
-//		if (sendate(head) == 0) continue; // TODO£∫¥ÌŒÛ¥¶¿Ì
-//		
-//		while (1)
-//		{
-//			//int len = recv(m_sock, buf + idx, BUF_SIZE - idx, 0);
-//			//if (len <= 0) return -1;
-//			//idx += len;
-//
-//			int len = idx;
-//			cpacket pack((uchar*)buf, len);
-//			if (len)
-//			{
-//				memmove(buf, buf + len, BUF_SIZE - len);
-//				idx -= len;
-//				m_mpack[head.hevent].push_back(pack);
-//				continue;
-//			}
-//
-//			len = recv(m_sock, buf + idx, BUF_SIZE - idx, 0);
-//			if (len <= 0)
-//			{
-//				closesock();
-//				SetEvent(head.hevent);
-//				break;
-//			}
-//			idx += len;
-//		}
-//		mu_lock.lock();
-//		m_lstsend.pop_front();
-//		mu_lock.unlock();
-//	}
-//}
-
-void csocket::threadfunc2()
+void csocket::threadfunc()
 {
 	SetEvent(m_eventinvoke);
 	MSG msg;
@@ -142,7 +89,6 @@ csocket::csocket()
 	m_nip = INADDR_ANY;
 	m_nport = 0;
 	m_sock = -1;
-	m_lstsend.clear();
 	m_hthread = INVALID_HANDLE_VALUE;
 
 	m_eventinvoke = CreateEvent(NULL, TRUE, FALSE, NULL);
@@ -186,7 +132,7 @@ bool csocket::init()
 	if (m_sock != -1) closesock();
 	m_sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (m_sock == -1) return 0;
-	cout << "m_sock:" << m_sock << endl;
+	//cout << "m_sock:" << m_sock << endl;
 	sockaddr_in sev_addr;
 	memset(&sev_addr, 0, sizeof sev_addr);
 	sev_addr.sin_family = AF_INET;
@@ -219,12 +165,19 @@ void csocket::closesock()
 	m_sock = -1;
 }
 
+bool csocket::sendpacket(HWND hwnd, cpacket pack, WPARAM wparam)
+{
+	packdata* pdata = new packdata(pack.data(), pack.size(), wparam);
+	bool res = PostThreadMessage(m_nthreadid, WM_SEND_PACK, (WPARAM)pdata, (LPARAM)hwnd);
+	if (res == 0) delete pdata;
+	return res;
+}
+
 int csocket::dealcommand()
 {
 	if (m_sock == -1) return -1;
 
 	char* buf = vbuf.data();
-	//if (nbufidx == 0) memset(buf, 0, sizeof buf), nbufidx = 0;
 	while (1)
 	{
 		int len = nbufidx;
@@ -248,12 +201,6 @@ bool csocket::sendate(const char* pdata, uint nsize)
 	return send(m_sock, pdata, nsize, 0) > 0;
 
 }
-
-//bool csocket::sendate(cpacket& pack)
-//{
-//	if (m_client == -1) return 0;
-//	return send(m_client, pack.data(), pack.size(), 0) > 0;
-//}
 
 bool csocket::sendate(cpacket pack)
 {
@@ -302,14 +249,6 @@ cpacket::cpacket()
 
 cpacket::cpacket(const uchar* pdata, int& nsize)
 {
-	/*cout << "=====" << endl;
-	for (int i = 0; i < nsize; i++)
-	{
-		if (i && i % 40 == 0) cout << endl;
-		printf("%02X ", pdata[i]);
-	}
-	cout << endl;*/
-
 	int idx = 0, n = nsize;
 	nsize = 0;
 
@@ -319,24 +258,18 @@ cpacket::cpacket(const uchar* pdata, int& nsize)
 	if (idx + 4 >= n) return;
 	nlen = *(int*)&pdata[++idx], idx += 4;
 	int nstsize = nlen - 6;
-	//cout << "nlen" << ' ' << nlen << endl;
+
 	if (idx + nlen > n) return;
 
 	scmd = *(us*)&pdata[idx], idx += 2;
-	//cout << "scmd" << ' ' << scmd << endl;
 
 	int sum = 0;
 	strbuf = "";
 
 	for (int i = 0; i < nstsize; i++) sum += pdata[idx + i], strbuf += pdata[idx + i];
 	idx += nstsize;
-	//cout << "strbuf" << ' ' << strbuf << endl;
-	/*FILEINFO* pinfo = (FILEINFO*)strbuf.c_str();
-	cout << "strbuf:" << pinfo->filename << ' ' << pinfo->hasnext << ' ' << pinfo->isdirectory <<
-		' ' << pinfo->isvalid << endl;*/
 
 	nsum = *(int*)&pdata[idx], idx += 4;
-	//cout << "nsum" << ' ' << nsum << endl;
 
 	if (nsum == sum) nsize = idx;
 }
