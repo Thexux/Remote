@@ -2,8 +2,6 @@
 #include "clientsocket.h"
 #include "common.h"
 
-const int BUF_SIZE = 2048000;
-
 csocket* csocket::m_csock = 0;
 //csocket* pclient = csocket::getsocket();
 csocket::chelper csocket::m_help;
@@ -14,64 +12,122 @@ csocket* csocket::getsocket()
 	return m_csock;
 }
 
-void csocket::threadentry(void* arg)
+unsigned csocket::threadentry(void* arg)
 {
 	csocket* psock = (csocket*)arg;
-	psock->threadfunc();
+	psock->threadfunc2();
+	_endthreadex(0);
+	return 0;
 
 }
 
-void csocket::threadfunc()
+//void csocket::threadfunc()
+//{
+//	string strbuf;
+//	strbuf.reserve(BUF_SIZE);
+//	char* buf = (char*)strbuf.c_str();
+//	int idx = 0;
+//	while (1)
+//	{
+//		//if (m_lstsend.size() == 0 || m_lstsend.front().shead != 0xfeff) continue;
+//		if (m_lstsend.size() == 0)
+//		{
+//			Sleep(1);
+//			continue;
+//		}
+//		mu_lock.lock();
+//		cpacket& head = m_lstsend.front();
+//		mu_lock.unlock();
+//		TRACE("cmd %d, thread id %d\r\n", m_lstsend.front().scmd, GetCurrentThreadId());
+//		init();
+//		if (sendate(head) == 0) continue; // TODO：错误处理
+//		
+//		while (1)
+//		{
+//			//int len = recv(m_sock, buf + idx, BUF_SIZE - idx, 0);
+//			//if (len <= 0) return -1;
+//			//idx += len;
+//
+//			int len = idx;
+//			cpacket pack((uchar*)buf, len);
+//			if (len)
+//			{
+//				memmove(buf, buf + len, BUF_SIZE - len);
+//				idx -= len;
+//				m_mpack[head.hevent].push_back(pack);
+//				continue;
+//			}
+//
+//			len = recv(m_sock, buf + idx, BUF_SIZE - idx, 0);
+//			if (len <= 0)
+//			{
+//				closesock();
+//				SetEvent(head.hevent);
+//				break;
+//			}
+//			idx += len;
+//		}
+//		mu_lock.lock();
+//		m_lstsend.pop_front();
+//		mu_lock.unlock();
+//	}
+//}
+
+void csocket::threadfunc2()
 {
-	string strbuf;
-	strbuf.reserve(BUF_SIZE);
-	char* buf = (char*)strbuf.c_str();
-	int idx = 0;
-	while (1)
+	SetEvent(m_eventinvoke);
+	MSG msg;
+	while (::GetMessage(&msg, NULL, 0, 0))
 	{
-		//if (m_lstsend.size() == 0 || m_lstsend.front().shead != 0xfeff) continue;
-		if (m_lstsend.size() == 0)
-		{
-			Sleep(1);
-			continue;
-		}
-		mu_lock.lock();
-		cpacket& head = m_lstsend.front();
-		mu_lock.unlock();
-		TRACE("cmd %d, thread id %d\r\n", m_lstsend.front().scmd, GetCurrentThreadId());
-		init();
-		if (sendate(head) == 0) continue; // TODO：错误处理
-		
-		while (1)
-		{
-			//int len = recv(m_sock, buf + idx, BUF_SIZE - idx, 0);
-			//if (len <= 0) return -1;
-			//idx += len;
-
-			int len = idx;
-			cpacket pack((uchar*)buf, len);
-			if (len)
-			{
-				memmove(buf, buf + len, BUF_SIZE - len);
-				idx -= len;
-				m_mpack[head.hevent].push_back(pack);
-				continue;
-			}
-
-			len = recv(m_sock, buf + idx, BUF_SIZE - idx, 0);
-			if (len <= 0)
-			{
-				//closesock();
-				SetEvent(head.hevent);
-				break;
-			}
-			idx += len;
-		}
-		mu_lock.lock();
-		m_lstsend.pop_front();
-		mu_lock.unlock();
+		TranslateMessage(&msg);
+		DispatchMessage(&msg);
+		if (m_mpfun.find(msg.message) == m_mpfun.end()) continue; //TODO:
+		(this->*m_mpfun[msg.message])(msg.message, msg.wParam, msg.lParam);
 	}
 }
+
+void csocket::sendpackmsg(UINT nmsg, WPARAM wparam, LPARAM lparam)
+{
+	packdata strpack = *(packdata*)wparam;
+	delete (packdata*)wparam;
+	HWND hwnd = (HWND)lparam;
+	if (init())
+	{
+		int res = send(m_sock, (char*)strpack.strdata.c_str(), (int)strpack.strdata.size(), 0);
+		if (res > 0)
+		{
+			char* buf = vbuf.data();
+			while (1)
+			{
+				int len = nbufidx;
+				cpacket pack((uchar*)buf, len);
+				if (len)
+				{
+					memmove(buf, buf + len, BUF_SIZE - len);
+					nbufidx -= len;
+					::SendMessage(hwnd, WM_SEND_PACK_ACK, (WPARAM)new cpacket(pack), strpack.extend);
+					continue;
+				}
+
+				len = recv(m_sock, buf + nbufidx, BUF_SIZE - nbufidx, 0);
+				if (len <= 0)
+				{
+					closesock();
+					::SendMessage(hwnd, WM_SEND_PACK_ACK, 0, 1);
+					return;
+				}
+				nbufidx += len;
+			}
+		}
+		else
+		{
+			closesock();
+			::SendMessage(hwnd, WM_SEND_PACK_ACK, NULL, -1);
+		}
+	}
+	else ::SendMessage(hwnd, WM_SEND_PACK_ACK, NULL, -2);
+}
+
 
 csocket::csocket()
 {
@@ -88,10 +144,35 @@ csocket::csocket()
 	m_sock = -1;
 	m_lstsend.clear();
 	m_hthread = INVALID_HANDLE_VALUE;
+
+	m_eventinvoke = CreateEvent(NULL, TRUE, FALSE, NULL);
+	m_hthread = (HANDLE)_beginthreadex(NULL, 0, threadentry, this, 0, &m_nthreadid);
+	if (WaitForSingleObject(m_eventinvoke, 100) == WAIT_TIMEOUT)
+		TRACE("网络消息处理线程启动失败！\r\n");
+	CloseHandle(m_eventinvoke);
+
+	struct
+	{
+		UINT message;
+		MSGFUNC func;
+	} funcs[] =
+	{
+		{WM_SEND_PACK, &csocket::sendpackmsg},
+		{0, 0}
+	};
+	for (int i = 0; funcs[i].message; i++)
+	{
+		m_mpfun[funcs[i].message] = funcs[i].func;
+	}
+
 }
 
 csocket::csocket(const csocket& cs)
 {
+	m_nip = cs.m_nip;
+	m_nport = cs.m_nport;
+	m_sock = cs.m_sock;
+	m_mpfun = cs.m_mpfun;
 }
 
 csocket::~csocket()
@@ -268,15 +349,12 @@ cpacket::cpacket(const cpacket& cp)
 	scmd = cp.scmd;
 	strbuf = cp.strbuf;
 	nsum = cp.nsum;
-	hevent = cp.hevent;
 }
 
-cpacket::cpacket(us cmd, const uchar* pdata, int nsize, HANDLE hevent)
+cpacket::cpacket(us cmd, const uchar* pdata, int nsize)
 {
 	shead = 0xFEFF, nlen = nsize + 6, scmd = cmd, nsum = 0, strbuf = "";
 	for (int i = 0; i < nsize; i++) nsum += pdata[i], strbuf += pdata[i];
-
-	this->hevent = hevent;
 	//cout << "======" << nlen << ' ' << scmd << ' ' << pdata << ' ' << strbuf << ' ' << nsum << endl;
 }
 
@@ -287,7 +365,6 @@ cpacket& cpacket::operator=(const cpacket& cp)
 	scmd = cp.scmd;
 	strbuf = cp.strbuf;
 	nsum = cp.nsum;
-	hevent = cp.hevent;
 	return *this;
 }
 

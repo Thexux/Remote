@@ -23,12 +23,20 @@ public:
 	void updateaddr(int nip, int nport); //更新服务器地址
 	int dealcommand();
 	void closesock();
-	int sendcommandpacket(int ncmd,
+	bool sendcommandpacket(
+		HWND hwnd, // 数据包收到后，需要应答的窗口
+		int ncmd,
 		uchar* pdata = NULL,
 		int nlen = 0,
-		list<cpacket>*lstpack = NULL);
+		WPARAM wparam = 0);
 	int getimage(CImage& image);
 	int downflie(string strpath);
+	void downloadend()
+	{
+		m_statusdlg.ShowWindow(SW_HIDE);
+		m_remotedig.EndWaitCursor();
+		m_remotedig.MessageBox(_T("下载完成！！"), _T("完成"));
+	}
 	void startwatchscreen();
 
 protected:

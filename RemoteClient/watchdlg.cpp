@@ -41,6 +41,7 @@ BEGIN_MESSAGE_MAP(cwatchdlg, CDialog)
 	ON_WM_RBUTTONUP()
 	ON_WM_MOUSEMOVE()
 	ON_STN_CLICKED(IDC_WATCH, &cwatchdlg::OnStnClickedWatch)
+	ON_MESSAGE(WM_SEND_PACK_ACK, &cwatchdlg::OnSendPackAck)
 END_MESSAGE_MAP()
 
 
@@ -60,7 +61,7 @@ BOOL cwatchdlg::OnInitDialog()
 
 	// TODO:  在此添加额外的初始化
 	m_isfull = 0;
-	SetTimer(0, 45, 0);
+	//SetTimer(0, 45, 0);
 	return TRUE;  // return TRUE unless you set the focus to a control
 				  // 异常: OCX 属性页应返回 FALSE
 }
@@ -68,38 +69,76 @@ BOOL cwatchdlg::OnInitDialog()
 
 void cwatchdlg::OnTimer(UINT_PTR nIDEvent)
 { 
-	if (nIDEvent == 0)
-	{
-		//cclientcontroller* pparent = cclientcontroller::getinstance();
-		//CRemoteClientDlg* pparent = (CRemoteClientDlg*)GetParent();
-		//cout << "Time now is full: " << pparent->isfull() << endl;
-		if (m_isfull)
-		{	
-			CRect rect;
-			m_picture.GetWindowRect(rect);
-			//pparent->getimage().Save(_T("b.jpeg"), Gdiplus::ImageFormatJPEG);
-			//pparent->getimage().BitBlt(m_picture.GetDC()->GetSafeHdc(), 0, 0, SRCCOPY);
+	//if (nIDEvent == 0)
+	//{
+	//	//cclientcontroller* pparent = cclientcontroller::getinstance();
+	//	//CRemoteClientDlg* pparent = (CRemoteClientDlg*)GetParent();
+	//	//cout << "Time now is full: " << pparent->isfull() << endl;
+	//	if (m_isfull)
+	//	{	
+	//		CRect rect;
+	//		m_picture.GetWindowRect(rect);
+	//		//pparent->getimage().Save(_T("b.jpeg"), Gdiplus::ImageFormatJPEG);
+	//		//pparent->getimage().BitBlt(m_picture.GetDC()->GetSafeHdc(), 0, 0, SRCCOPY);
 
-			m_obj_width = m_image.GetWidth();
-			m_obj_height = m_image.GetHeight();
-			m_image.StretchBlt(m_picture.GetDC()->GetSafeHdc(),
-				0, 0, rect.Width(), rect.Height(), SRCCOPY);
-			m_picture.InvalidateRect(NULL);
-			m_image.Destroy();
+	//		m_obj_width = m_image.GetWidth();
+	//		m_obj_height = m_image.GetHeight();
+	//		m_image.StretchBlt(m_picture.GetDC()->GetSafeHdc(),
+	//			0, 0, rect.Width(), rect.Height(), SRCCOPY);
+	//		m_picture.InvalidateRect(NULL);
+	//		m_image.Destroy();
 
-			setimagestatus();
-		}
+	//		setimagestatus();
+	//	}
 
-	}
-	
+	//}
+	//
 	CDialog::OnTimer(nIDEvent);
+}
+
+LRESULT cwatchdlg::OnSendPackAck(WPARAM wParm, LPARAM lParam)
+{
+	if (lParam < 0)
+	{
+	// TODO：错误处理
+	}
+	else if (lParam == 1)
+	{
+	// TODO：关闭套接字
+	}
+	else 
+	{
+		if (wParm == 0) return 0;
+		cpacket pack = *(cpacket*)wParm;
+		delete (cpacket*)wParm;
+		if (pack.scmd != 6) return 0;
+
+		CRect rect;
+		m_picture.GetWindowRect(rect);
+		//pparent->getimage().Save(_T("b.jpeg"), Gdiplus::ImageFormatJPEG);
+		//pparent->getimage().BitBlt(m_picture.GetDC()->GetSafeHdc(), 0, 0, SRCCOPY);
+		ctool::btoimage(getimage(), pack.strbuf);
+
+		m_obj_width = m_image.GetWidth();
+		m_obj_height = m_image.GetHeight();
+		m_image.StretchBlt(m_picture.GetDC()->GetSafeHdc(),
+			0, 0, rect.Width(), rect.Height(), SRCCOPY);
+		m_picture.InvalidateRect(NULL);
+		m_image.Destroy();
+
+		setimagestatus();
+		
+	}
+
+
+	return 0;
 }
 
 void cwatchdlg::OnLButtonDblClk(UINT nFlags, CPoint point)
 {
 	MOUSEV mouse;
 	mouse.sact = 1, mouse.sbtn = 0, mouse.pt = localtoremotepoint(point);
-	cclientcontroller::getinstance()->sendcommandpacket(7, (uchar*)&mouse, sizeof mouse);
+	cclientcontroller::getinstance()->sendcommandpacket(GetSafeHwnd(), 7, (uchar*)&mouse, sizeof mouse);
 	CDialog::OnLButtonDblClk(nFlags, point);
 }
 
@@ -107,7 +146,7 @@ void cwatchdlg::OnLButtonDown(UINT nFlags, CPoint point)
 {
 	MOUSEV mouse;
 	mouse.sact = 2, mouse.sbtn = 0, mouse.pt =localtoremotepoint(point);
-	cclientcontroller::getinstance()->sendcommandpacket(7, (uchar*)&mouse, sizeof mouse);
+	cclientcontroller::getinstance()->sendcommandpacket(GetSafeHwnd(), 7, (uchar*)&mouse, sizeof mouse);
 	CDialog::OnLButtonDown(nFlags, point);
 }
 
@@ -116,7 +155,7 @@ void cwatchdlg::OnLButtonUp(UINT nFlags, CPoint point)
 {
 	MOUSEV mouse;
 	mouse.sact = 3, mouse.sbtn = 0, mouse.pt = localtoremotepoint(point);
-	cclientcontroller::getinstance()->sendcommandpacket(7, (uchar*)&mouse, sizeof mouse);
+	cclientcontroller::getinstance()->sendcommandpacket(GetSafeHwnd(), 7, (uchar*)&mouse, sizeof mouse);
 	CDialog::OnLButtonUp(nFlags, point);
 }
 
@@ -126,7 +165,7 @@ void cwatchdlg::OnRButtonDblClk(UINT nFlags, CPoint point)
 {
 	MOUSEV mouse;
 	mouse.sact = 1, mouse.sbtn = 1, mouse.pt = localtoremotepoint(point);
-	cclientcontroller::getinstance()->sendcommandpacket(7, (uchar*)&mouse, sizeof mouse);
+	cclientcontroller::getinstance()->sendcommandpacket(GetSafeHwnd(), 7, (uchar*)&mouse, sizeof mouse);
 	CDialog::OnRButtonDblClk(nFlags, point);
 }
 
@@ -135,7 +174,7 @@ void cwatchdlg::OnRButtonDown(UINT nFlags, CPoint point)
 {
 	MOUSEV mouse;
 	mouse.sact = 2, mouse.sbtn = 1, mouse.pt = localtoremotepoint(point);
-	cclientcontroller::getinstance()->sendcommandpacket(7, (uchar*)&mouse, sizeof mouse);
+	cclientcontroller::getinstance()->sendcommandpacket(GetSafeHwnd(), 7, (uchar*)&mouse, sizeof mouse);
 
 	CDialog::OnRButtonDown(nFlags, point);
 }
@@ -145,7 +184,7 @@ void cwatchdlg::OnRButtonUp(UINT nFlags, CPoint point)
 {
 	MOUSEV mouse;
 	mouse.sact = 3, mouse.sbtn = 1, mouse.pt = localtoremotepoint(point);
-	cclientcontroller::getinstance()->sendcommandpacket(7, (uchar*)&mouse, sizeof mouse);
+	cclientcontroller::getinstance()->sendcommandpacket(GetSafeHwnd(), 7, (uchar*)&mouse, sizeof mouse);
 
 	CDialog::OnRButtonUp(nFlags, point);
 }
@@ -156,7 +195,7 @@ void cwatchdlg::OnMouseMove(UINT nFlags, CPoint point)
 {
 	MOUSEV mouse;
 	mouse.sact = 0, mouse.sbtn = 3, mouse.pt = localtoremotepoint(point);
-	cclientcontroller::getinstance()->sendcommandpacket(7, (uchar*)&mouse, sizeof mouse);
+	cclientcontroller::getinstance()->sendcommandpacket(GetSafeHwnd(), 7, (uchar*)&mouse, sizeof mouse);
 
 	CDialog::OnMouseMove(nFlags, point);
 }
@@ -169,7 +208,7 @@ void cwatchdlg::OnStnClickedWatch()
 	ScreenToClient(&point);
 	MOUSEV mouse;
 	mouse.sact = 0, mouse.sbtn = 0, mouse.pt = localtoremotepoint(point);
-	cclientcontroller::getinstance()->sendcommandpacket(7, (uchar*)&mouse, sizeof mouse);
+	cclientcontroller::getinstance()->sendcommandpacket(GetSafeHwnd(), 7, (uchar*)&mouse, sizeof mouse);
 }
 
 

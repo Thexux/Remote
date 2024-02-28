@@ -88,6 +88,7 @@ BEGIN_MESSAGE_MAP(CRemoteClientDlg, CDialogEx)
 	ON_WM_TIMER()
 	ON_NOTIFY(IPN_FIELDCHANGED, IDC_IPADDR_SERV, &CRemoteClientDlg::OnIpnFieldchangedIpaddrServ)
 	ON_EN_CHANGE(IDC_EDIT_PORT, &CRemoteClientDlg::OnEnChangeEditPort)
+	ON_MESSAGE(WM_SEND_PACK_ACK, &CRemoteClientDlg::OnSendPackAck)
 END_MESSAGE_MAP()
 
 
@@ -123,15 +124,7 @@ BOOL CRemoteClientDlg::OnInitDialog()
 	SetIcon(m_hIcon, FALSE);		// 设置小图标
 
 	// TODO: 在此添加额外的初始化代码
-	UpdateData();
-	m_server_address = 0x7f000001;
-	m_nport = _T("9527");
-	cclientcontroller* pclientctl = cclientcontroller::getinstance();
-	pclientctl->updateaddr(m_server_address, atoi(m_nport));
-
-	UpdateData(0);
-	m_dlgstatus.Create(IDD_DLG_STATUS, this);
-	m_dlgstatus.ShowWindow(SW_HIDE);
+	inituidata();
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -188,33 +181,17 @@ HCURSOR CRemoteClientDlg::OnQueryDragIcon()
 void CRemoteClientDlg::OnBnClickedBtnTest()
 {
 	cclientcontroller* pclientctl = cclientcontroller::getinstance();
-	pclientctl->sendcommandpacket(505);
+	pclientctl->sendcommandpacket(GetSafeHwnd(), 505);
 }
 
 void CRemoteClientDlg::OnBnClickedBtnFileinfo()
 {
-	list<cpacket> lst;
 	cclientcontroller* pclientctl = cclientcontroller::getinstance();
-	int res = pclientctl->sendcommandpacket(1, 0, 0, &lst);
-	if (res == -1 || lst.size() == 0)
+	bool ok = pclientctl->sendcommandpacket(GetSafeHwnd(), 1, 0, 0);
+	if (ok == 0)
 	{
 		AfxMessageBox(_T("命令处理失败！！！"));
 		return;
-	}
-	//string strdata = pclient->getpacket().strbuf;
-	string strdata = lst.front().strbuf;
-	string strt;
-	m_tree.DeleteAllItems();
-	for (int i = 0; i < strdata.size(); i++)
-	{
-		if (strdata[i] == ',')
-		{
-			strt += ':';
-			HTREEITEM ht = m_tree.InsertItem(strt.c_str(), TVI_ROOT, TVI_LAST);
-			m_tree.InsertItem(0, ht, TVI_LAST);
-			strt = "";
-		}
-		else strt += strdata[i];
 	}
 }
 
@@ -246,22 +223,9 @@ void CRemoteClientDlg::loadfilecurrent()
 	string strpath = getpath(htree);
 	m_list.DeleteAllItems();
 	cclientcontroller* pclientctl = cclientcontroller::getinstance();
-	int cmd = pclientctl->sendcommandpacket(2, (uchar*)strpath.c_str(), strpath.size(), 0);
-	FILEINFO* pinfo = (FILEINFO*)pclient->getpacket().strbuf.c_str();
-
-	while (pinfo->hasnext)
-	{
-		cout << pinfo->hasnext << ' ' << pinfo->isdirectory << ' ' << pinfo->filename << endl;
-		if (!pinfo->isdirectory) m_list.InsertItem(0, pinfo->filename);
-
-		cmd = pclient->dealcommand();
-		//cout << cmd << endl;
-		if (cmd < 0) break;
-		pinfo = (FILEINFO*)pclient->getpacket().strbuf.c_str();
-	}
-	pclient->closesock();
+	bool ok = pclientctl->sendcommandpacket(GetSafeHwnd(), 2, (uchar*)strpath.c_str(), strpath.size(), (WPARAM)htree);
+	if (ok == 0) cout << "loadfileinfo is error"; // TODO：错误处理
 }
-
 
 void CRemoteClientDlg::loadfileinfo()
 {
@@ -275,23 +239,21 @@ void CRemoteClientDlg::loadfileinfo()
 	m_list.DeleteAllItems();
 	string strpath = getpath(htree);
 	cclientcontroller* pclientctl = cclientcontroller::getinstance();
-	list<cpacket> lst;
-	int cmd = pclientctl->sendcommandpacket(2, (uchar*)strpath.c_str(), strpath.size(), &lst);
-	if (cmd != 2 || lst.size() == 0) cout << "loadfileinfo is error"; // TODO：错误处理
-	for (auto u : lst)
-	{
-		FILEINFO* pinfo = (FILEINFO*)u.strbuf.c_str();
-		cout << pinfo->hasnext << ' ' << pinfo->isdirectory << ' ' << pinfo->filename << endl;
-		if (pinfo->hasnext == 0) break;
-		if (pinfo->isdirectory)
-		{
-			if (string(pinfo->filename) == "." || string(pinfo->filename) == "..") continue;
-			
-			HTREEITEM ht = m_tree.InsertItem(pinfo->filename, htree, TVI_LAST);
-			m_tree.InsertItem("", ht, TVI_LAST);
-		}
-		else m_list.InsertItem(0, pinfo->filename);
-	}
+	bool ok = pclientctl->sendcommandpacket(GetSafeHwnd(), 2, (uchar*)strpath.c_str(), strpath.size(), (WPARAM)htree);
+	if (ok == 0) cout << "loadfileinfo is error"; // TODO：错误处理
+}
+
+void CRemoteClientDlg::inituidata()
+{
+	UpdateData();
+	m_server_address = 0x7f000001;
+	m_nport = _T("9527");
+	cclientcontroller* pclientctl = cclientcontroller::getinstance();
+	pclientctl->updateaddr(m_server_address, atoi(m_nport));
+
+	UpdateData(0);
+	m_dlgstatus.Create(IDD_DLG_STATUS, this);
+	m_dlgstatus.ShowWindow(SW_HIDE);
 }
 
 void CRemoteClientDlg::OnNMDblclkTreeDir(NMHDR* pNMHDR, LRESULT* pResult)
@@ -308,7 +270,6 @@ void CRemoteClientDlg::OnNMClickTreeDir(NMHDR* pNMHDR, LRESULT* pResult)
 	loadfileinfo();
 }
 
-
 void CRemoteClientDlg::OnNMRClickListFile(NMHDR* pNMHDR, LRESULT* pResult)
 {
 	LPNMITEMACTIVATE pNMItemActivate = reinterpret_cast<LPNMITEMACTIVATE>(pNMHDR);
@@ -324,10 +285,7 @@ void CRemoteClientDlg::OnNMRClickListFile(NMHDR* pNMHDR, LRESULT* pResult)
 	menu.LoadMenu(IDR_MENU_RCLICK);
 	CMenu* ppop = menu.GetSubMenu(0);
 	if (ppop) ppop->TrackPopupMenu(TPM_LEFTALIGN | TPM_RIGHTBUTTON, ptmouse.x, ptmouse.y, this);
-
-
 }
-
 
 void CRemoteClientDlg::OnDownloadFile()
 {
@@ -338,9 +296,7 @@ void CRemoteClientDlg::OnDownloadFile()
 	strfile = getpath(hslt) + strfile;
 
 	cclientcontroller* pclientctl = cclientcontroller::getinstance();
-	int res = pclientctl->downflie(strfile);
-
-	//if (res) // TODO: 错误处理
+	pclientctl->downflie(strfile);
 }
 
 
@@ -352,8 +308,8 @@ void CRemoteClientDlg::OnDeleteFile()
 	string strfile = m_list.GetItemText(nslt, 0);
 	strfile = strpath + strfile;
 	cclientcontroller* pclientctl = cclientcontroller::getinstance();
-	int res = pclientctl->sendcommandpacket(5, (uchar*)strfile.c_str(), strfile.size());
-	if (res != 5) AfxMessageBox("删除文件命令执行失败");
+	bool ok = pclientctl->sendcommandpacket(GetSafeHwnd(), 5, (uchar*)strfile.c_str(), strfile.size());
+	if (ok == 0) AfxMessageBox("删除文件命令执行失败");
 	loadfilecurrent();
 }
 
@@ -366,8 +322,8 @@ void CRemoteClientDlg::OnRunFile()
 	string strfile = m_list.GetItemText(nslt, 0);
 	strfile = strpath + strfile;
 	cclientcontroller* pclientctl = cclientcontroller::getinstance();
-	int res = pclientctl->sendcommandpacket(3, (uchar*)strfile.c_str(), strfile.size());
-	if (res != 3) AfxMessageBox("打开文件命令执行失败");
+	bool ok = pclientctl->sendcommandpacket(GetSafeHwnd(), 3, (uchar*)strfile.c_str(), strfile.size());
+	if (ok == 0) AfxMessageBox("打开文件命令执行失败");
 
 }
 
@@ -403,3 +359,91 @@ void CRemoteClientDlg::OnEnChangeEditPort()
 	cclientcontroller* pclientctl = cclientcontroller::getinstance();
 	pclientctl->updateaddr(m_server_address, atoi(m_nport));
 }
+
+void CRemoteClientDlg::strtotree(const string& strdata, CTreeCtrl& m_tree)
+{
+	string strt;
+	m_tree.DeleteAllItems();
+	for (int i = 0; i < strdata.size(); i++)
+	{
+		if (strdata[i] == ',')
+		{
+			strt += ':';
+			HTREEITEM ht = m_tree.InsertItem(strt.c_str(), TVI_ROOT, TVI_LAST);
+			m_tree.InsertItem(0, ht, TVI_LAST);
+			strt = "";
+		}
+		else strt += strdata[i];
+	}
+}
+void CRemoteClientDlg::updatefileinfo(const FILEINFO& finfo, HTREEITEM hparent)
+{
+	cout << finfo.hasnext << ' ' << finfo.isdirectory << ' ' << finfo.filename << endl;
+	if (finfo.hasnext == 0) return;
+	if (finfo.isdirectory)
+	{
+		if (string(finfo.filename) == "." || string(finfo.filename) == "..") return;
+
+		HTREEITEM ht = m_tree.InsertItem(finfo.filename, hparent, TVI_LAST);
+		m_tree.InsertItem("", ht, TVI_LAST);
+		m_tree.Expand(hparent, TVE_EXPAND);
+	}
+	else m_list.InsertItem(0, finfo.filename);
+}
+
+void CRemoteClientDlg::updatedownloadfile(const string& strdata, FILE* pfile)
+{
+	static ll llen = 0;
+	if (llen == 0) llen = *(ll*)strdata.c_str();
+	if (strdata.size() == 0)
+	{
+		llen = 0, fclose(pfile);
+		cclientcontroller::getinstance()->downloadend();
+		return;
+	}
+	fwrite(strdata.c_str(), 1, strdata.size(), pfile);
+}
+
+void CRemoteClientDlg::dealcommand(us ncmd, const string& strdata, LPARAM lParam)
+{
+	switch (ncmd)
+	{
+	case 505:
+		TRACE("connection success!\r\n");
+		break;
+	case 1: // 获取驱动信息
+		strtotree(strdata, m_tree);
+		break;
+	case 2: // 获取文件信息
+		updatefileinfo(*(FILEINFO*)strdata.c_str(), (HTREEITEM)lParam);
+		break;
+	case 3:
+		TRACE("run file done!\r\n");
+		break;
+	case 4:
+		updatedownloadfile(strdata, (FILE*)lParam);
+		break;
+	case 5:
+		TRACE("delete file done!\r\n");
+		break;
+	default:
+		TRACE("unknow data received %d!\r\n", ncmd);
+		break;
+	}
+}
+
+LRESULT CRemoteClientDlg::OnSendPackAck(WPARAM wParm, LPARAM lParam)
+{
+	if (lParam < 0) TRACE("socket is error %d!\r\n", lParam);
+	else if (lParam == 1) TRACE("the other side socket is close!\r\n");
+	else
+	{
+		if (wParm == 0) return 0;
+		cpacket pack = *(cpacket*)wParm; delete (cpacket*)wParm;
+		dealcommand(pack.scmd, pack.strbuf, lParam);
+	}
+
+
+	return 0;
+}
+

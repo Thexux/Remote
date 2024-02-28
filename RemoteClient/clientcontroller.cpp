@@ -84,22 +84,11 @@ void cclientcontroller::closesock()
 	csocket::getsocket()->closesock();
 }
 
-int cclientcontroller::sendcommandpacket(int ncmd,
-	uchar* pdata, int nlen, list<cpacket>* plstpack)
+bool cclientcontroller::sendcommandpacket(HWND hwnd, 
+	int ncmd,uchar* pdata, int nlen, WPARAM wparam)
 {
 	csocket* pclient = csocket::getsocket();
-	//if (pclient->init() == 0) return false;
-	HANDLE hevent = CreateEvent(NULL, TRUE, FALSE, NULL);
-	list<cpacket> lstpack;
-	if (plstpack == 0) plstpack = &lstpack;
-	pclient->sendpacket(cpacket(ncmd, pdata, nlen, hevent), *plstpack);
-	CloseHandle(hevent);
-	if (plstpack->size() == 0)
-	{
-		cout << "plstpack->size() is empty" << endl;
-		return false; // TODO 错误处理
-	}
-	return plstpack->front().scmd;
+	return pclient->sendpacket(hwnd, cpacket(ncmd, pdata, nlen), wparam);
 }
 
 int cclientcontroller::getimage(CImage& image)
@@ -121,22 +110,20 @@ void cclientcontroller::startwatchscreen()
 void cclientcontroller::threadwatchscreen()
 {
 	Sleep(50);
-	
+	ULONGLONG ntick = GetTickCount64();
 	while (m_isclose == 0)
 	{
 		if (m_watchdlg.isfull() == 0) // 更新数据到缓存
 		{
-			list<cpacket> lstpack;
-			int cmd = sendcommandpacket(6, 0, 0, &lstpack);
-			if (cmd != 6)
+			if (GetTickCount64() - ntick < 50) Sleep(50 - GetTickCount64() + ntick);
+			
+			if (sendcommandpacket(m_watchdlg.GetSafeHwnd(), 6, 0, 0) == 0)
 			{
 				Sleep(1);
 				continue;
 			}
-			//cout << "++++" << lstpack.size() << endl;
-			if (ctool::btoimage(m_watchdlg.getimage(), lstpack.front().strbuf) == 0)
-				m_watchdlg.setimagestatus(1);
-			else cout << "获取图像失败" << endl;
+			m_watchdlg.setimagestatus(1);
+			ntick = GetTickCount64();
 		}
 		else Sleep(1);
 	}
@@ -160,7 +147,7 @@ void cclientcontroller::threaddownloadfile()
 		return;
 	}
 
-	int res = sendcommandpacket(4, (uchar*)m_strremote.c_str(), m_strremote.size(), 0);
+	int res = sendcommandpacket(m_statusdlg, 4, (uchar*)m_strremote.c_str(), m_strremote.size());
 	if (res != 4)
 	{
 		AfxMessageBox("执行下载命令失败！！"), fclose(pfile), closesock();
@@ -206,9 +193,18 @@ int cclientcontroller::downflie(string strpath)
 
 	m_strremote = strpath;
 	m_strlocal = dlg.GetPathName();
+	FILE* pfile = fopen(m_strlocal.c_str(), "wb+");
+	if (pfile == 0)
+	{
+		AfxMessageBox("本地没有权限保存该文件，或这文件无法创建！！！");
+		return -1;
+	}
 
-	m_threaddownload = (HANDLE)_beginthread(&cclientcontroller::threaddownloadentry, 0, this);
-	if (WaitForSingleObject(m_threaddownload, 0) != WAIT_TIMEOUT) return -2; // 返回值处理
+	bool ok = sendcommandpacket(m_remotedig, 4, (uchar*)m_strremote.c_str(), m_strremote.size(), (WPARAM)pfile);
+
+
+	//m_threaddownload = (HANDLE)_beginthread(&cclientcontroller::threaddownloadentry, 0, this);
+	//if (WaitForSingleObject(m_threaddownload, 0) != WAIT_TIMEOUT) return -2; // 返回值处理
 
 	m_remotedig.BeginWaitCursor();
 	m_statusdlg.m_info.SetWindowText(_T("命令正在执行中"));

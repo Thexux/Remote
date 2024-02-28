@@ -4,7 +4,12 @@
 #include "common.h"
 #include "statusdlg.h"
 #include "watchdlg.h"
+#include "clientsocket.h"
 #pragma once
+
+#ifndef WM_SEND_PACK_ACK
+#define WM_SEND_PACK_ACK (WM_USER + 2) 
+#endif
 
 // CRemoteClientDlg 对话框
 class CRemoteClientDlg : public CDialogEx
@@ -27,6 +32,11 @@ private:
 	void deletetreechilditem(HTREEITEM htree);
 	void loadfilecurrent();
 	void loadfileinfo();
+	void inituidata();
+	void strtotree(const string& driver, CTreeCtrl& tree);
+	void updatefileinfo(const FILEINFO& finfo, HTREEITEM hparent);
+	void updatedownloadfile(const string& strdata, FILE* pfile);
+	void dealcommand(us ncmd, const string& strdata, LPARAM lParam);
 
 // 实现
 protected:
@@ -57,4 +67,5 @@ public:
 	afx_msg void OnTimer(UINT_PTR nIDEvent);
 	afx_msg void OnIpnFieldchangedIpaddrServ(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnEnChangeEditPort();
+	afx_msg LRESULT OnSendPackAck(WPARAM wParm, LPARAM lParam);
 };

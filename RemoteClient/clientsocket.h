@@ -2,7 +2,12 @@
 #include"common.h"
 #include<mutex>
 #include "tool.h"
+
+#define WM_SEND_PACK (WM_USER + 1) // 发送包数据
+#define WM_SEND_PACK_ACK (WM_USER + 2) 
+
 const int FILESIZE = 256;
+const int BUF_SIZE = 2048000;
 
 struct FILEINFO
 {
@@ -20,7 +25,7 @@ public:
 	cpacket();
 	cpacket(const uchar* pdata, int& nsize);
 	cpacket(const cpacket& cp);
-	cpacket(us cmd, const uchar* pdata, int nsize, HANDLE hevent);
+	cpacket(us cmd, const uchar* pdata, int nsize);
 	cpacket& operator=(const cpacket& cp);
 	int size();
 	const char* data();
@@ -31,7 +36,6 @@ public:
 	string strbuf; // 包数据
 	int nsum = 0; // 和校验
 	string strout; // 整个包数据
-	HANDLE hevent;
 };
 //#pragma pack(pop)
 
@@ -42,6 +46,32 @@ struct MOUSEV
 	POINT pt = { 0, 0 }; // 坐标
 };
 
+struct packdata
+{
+	string strdata;
+	uint extend;
+	packdata(const char* pdata, int nlen, uint nextend = 0)
+	{
+		strdata.resize(nlen);
+		memcpy((char*)strdata.c_str(), pdata, nlen);
+		extend = nextend;
+	}
+	packdata(const packdata& data)
+	{
+		strdata = data.strdata;
+		extend = data.extend;
+	}
+	packdata& operator=(const packdata& data)
+	{
+		if (this == &data) return *this;
+		strdata = data.strdata;
+		extend = data.extend;
+		return *this;
+	}
+};
+
+
+
 class csocket
 {
 public:
@@ -49,22 +79,30 @@ public:
 	bool init();
 	void updateaddr(int nip, int nort);
 	void closesock();
-	bool sendpacket(const cpacket& pack, list<cpacket>& lstpacks)
+	//bool sendpacket(const cpacket& pack, list<cpacket>& lstpacks)
+	//{
+	//	cout << m_sock << endl;
+	//	if (m_sock == -1 && m_hthread == INVALID_HANDLE_VALUE)
+	//		m_hthread = (HANDLE)_beginthread(threadentry, 0, this); // TODO: 套接字关闭可能会多开
+	//	//TRACE("cmd %d, thread id %d\r\n", pack.scmd, GetCurrentThreadId());
+	//	mu_lock.lock();
+	//	m_lstsend.push_back(pack);
+	//	mu_lock.unlock();
+	//	WaitForSingleObject(pack.hevent, INFINITE);
+	//	if (m_mpack.find(pack.hevent) == m_mpack.end()) return false; // TODO：错误处理
+	//	for (auto u : m_mpack[pack.hevent]) lstpacks.push_back(u);
+	//	mu_lock.lock();
+	//	m_mpack.erase(m_mpack.find(pack.hevent));
+	//	mu_lock.unlock();
+	//	return true;
+	//}
+	bool sendpacket(HWND hwnd, cpacket pack, WPARAM wparam = 0)
 	{
-		cout << m_sock << endl;
-		if (m_sock == -1 && m_hthread == INVALID_HANDLE_VALUE)
-			m_hthread = (HANDLE)_beginthread(threadentry, 0, this); // TODO: 套接字关闭可能会多开
-		//TRACE("cmd %d, thread id %d\r\n", pack.scmd, GetCurrentThreadId());
-		mu_lock.lock();
-		m_lstsend.push_back(pack);
-		mu_lock.unlock();
-		WaitForSingleObject(pack.hevent, INFINITE);
-		if (m_mpack.find(pack.hevent) == m_mpack.end()) return false; // TODO：错误处理
-		for (auto u : m_mpack[pack.hevent]) lstpacks.push_back(u);
-		mu_lock.lock();
-		m_mpack.erase(m_mpack.find(pack.hevent));
-		mu_lock.unlock();
-		return true;
+		packdata* pdata = new packdata(pack.data(), pack.size(), wparam);
+		bool res = PostThreadMessage(m_nthreadid, WM_SEND_PACK, (WPARAM)pdata, (LPARAM)hwnd);
+		if (res == 0) delete pdata;
+		return res;
+		
 	}
 	int dealcommand();
 	cpacket& getpacket();
@@ -72,10 +110,17 @@ public:
 	MOUSEV getmousevent();
 
 private:
+	HANDLE m_eventinvoke; // 线程启动事件
+	typedef void(csocket::* MSGFUNC)
+		(UINT nmsg, WPARAM wparam, LPARAM lparam);
+	map<UINT, MSGFUNC> m_mpfun;
 	HANDLE m_hthread;
+	uint m_nthreadid;
 	std::mutex mu_lock;
-	static void threadentry(void* arg);
+	static unsigned __stdcall threadentry(void* arg);
 	void threadfunc();
+	void threadfunc2();
+	void sendpackmsg(UINT nmsg, WPARAM wparam/*缓冲区的值*/, LPARAM lparam/*句柄*/);
 	csocket();
 	csocket(const csocket&);
 	csocket& operator=(const csocket& cs);
