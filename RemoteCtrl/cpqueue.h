@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include "pch.h"
 #include <atomic>
 #include <list>
@@ -13,10 +13,10 @@ public:
 	};
 	struct iocparam
 	{
-		size_t noperator; //²Ù×÷
-		T data; //Êı¾İ
-		_beginthread_proc_type cbfunc; //»Øµ÷
-		HANDLE hevent; //pop²Ù×÷ĞèÒª
+		size_t noperator; //æ“ä½œ
+		T data; //æ•°æ®
+		_beginthread_proc_type cbfunc; //å›è°ƒ
+		HANDLE hevent; //popæ“ä½œéœ€è¦
 		iocparam(int op, const T& datax, HANDLE heve = NULL)
 		{
 			noperator = op;
