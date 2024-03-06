@@ -94,6 +94,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <DisableSpecificWarnings>4996</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -156,7 +157,9 @@
     <ClInclude Include="command.h" />
     <ClInclude Include="common.h" />
     <ClInclude Include="cpqueue.h" />
+    <ClInclude Include="iocpserver.h" />
     <ClInclude Include="packet.h" />
+    <ClInclude Include="threadpool.h" />
     <ClInclude Include="tool.h" />
     <ClInclude Include="framework.h" />
     <ClInclude Include="lockdialog.h" />
@@ -168,6 +171,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="command.cpp" />
+    <ClCompile Include="iocpserver.cpp" />
     <ClCompile Include="packet.cpp" />
     <ClCompile Include="tool.cpp" />
     <ClCompile Include="lockdialog.cpp" />
