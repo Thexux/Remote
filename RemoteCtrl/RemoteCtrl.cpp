@@ -35,19 +35,18 @@ void iocp()
 	ciocpserver server;
 	server.startservice();
 	getchar();
-	//exit(0);
 }
 
 int main()
 {
 	if (!Init()) return 1;
 
-	iocp();
+	//iocp();
 
-	/*ccommand cmd;
+	ccommand cmd;
 	int res = csocket::getsocket()->run(&ccommand::runcommand, &cmd);
 	if (res == -1) MessageBox(0, _T("网络初始化异常，未能成功初始化，请检查网络设备"), _T("网络初始化失败"), MB_OK | MB_ICONERROR);
-	if (res == -2) MessageBox(0, _T("多次无法正常接入用户，程序结束"), _T("接入用户失败"), MB_OK | MB_ICONERROR);*/
+	if (res == -2) MessageBox(0, _T("多次无法正常接入用户，程序结束"), _T("接入用户失败"), MB_OK | MB_ICONERROR);
 	
 	return 0;
 }

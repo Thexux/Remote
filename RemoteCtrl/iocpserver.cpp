@@ -13,23 +13,30 @@ cacceptoverlapped::cacceptoverlapped()
 int cacceptoverlapped::acceptwork()
 {
 	int llen = 0, rlen = 0;
-	if (*(LPDWORD)*m_client > 0)
+	if (m_client->getbufsize() > 0)
 	{
+		sockaddr *plocal = NULL, *premote = NULL;
 		GetAcceptExSockaddrs(*m_client, 0,
 			sizeof(sockaddr_in) + 16, sizeof(sockaddr_in) + 16,
-			(sockaddr**)m_client->getlocaladdr(), &llen, // 本地地址
-			(sockaddr**)m_client->getremoteaddr(), &rlen); // 远程地址
+			(sockaddr**)&plocal, &llen, // 本地地址
+			(sockaddr**)&premote, &rlen); // 远程地址
 
-		WSARecv(*m_client, m_client->recvwsabuf(), 1, *m_client, m_client->flags(), *m_client, 0);
+		memcpy(m_client->getlocaladdr(), plocal, sizeof(sockaddr_in));
+		memcpy(m_client->getremoteaddr(), premote, sizeof(sockaddr_in));
+
+		m_server->bindnewsock(*m_client);
+		int res = WSARecv(*m_client, m_client->recvwsabuf(), 1, *m_client, m_client->flags(), m_client->recvoverlapped(), 0);
+		if (res == -1 && WSAGetLastError() != WSA_IO_PENDING)
+		{
+			//TODO: 错误处理
+		}
 
 
 
 
-
-		if (!m_server->newaccept()) return -1;
-		return 0;
+		if (!m_server->newaccept()) return -2;
 	}
-	return -2;
+	return -1;
 }
 
 iocpclient::iocpclient() :
@@ -66,6 +73,17 @@ LPWSABUF iocpclient::sendwsabuf()
 {
 	return &m_sendolp->m_wsabuf;
 }
+
+LPOVERLAPPED iocpclient::recvoverlapped()
+{
+	return &m_recvolp->m_overlapped;
+}
+
+LPOVERLAPPED iocpclient::sendoverlapped()
+{
+	return &m_sendolp->m_overlapped;
+}
+
 
 int iocpclient::sendpack(std::vector<char>& data)
 {

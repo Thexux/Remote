@@ -13,7 +13,7 @@ class threadwork
 {
 public:
 	threadwork() :pfunb(NULL), func(NULL) {}
-	threadwork(threadfuncbase* obj, FUNCTYPE f) :pfunb(obj), func(f) {}
+	threadwork(void* obj, FUNCTYPE f) :pfunb((threadfuncbase*)obj), func(f) {}
 	threadwork(const threadwork& work)
 	{
 		pfunb = work.pfunb, func = work.func;
@@ -109,7 +109,12 @@ private:
 					str.Format(_T("thread found warning code %d\r\n"), res);
 					OutputDebugString(str);
 				}
-				if (res < 0) m_work.store(NULL);
+				if (res < 0)
+				{
+					::threadwork* pwork = m_work.load();
+					m_work.store(NULL);
+					delete pwork;
+				}
 			}
 			else Sleep(1);
 		}

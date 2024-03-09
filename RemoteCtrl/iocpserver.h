@@ -3,6 +3,8 @@
 #include <MSWSock.h>
 #include <map>
 #include "cpqueue.h"
+#include "tool.h"
+#include "common.h"
 #pragma warning(disable:4407)
 
 enum iocpoperator
@@ -48,6 +50,8 @@ public:
 	}
 	LPWSABUF recvwsabuf();
 	LPWSABUF sendwsabuf();
+	LPOVERLAPPED recvoverlapped();
+	LPOVERLAPPED sendoverlapped();
 
 	size_t getbufsize() { return m_buf.size(); }
 	LPDWORD flags() { return &m_flags; }
@@ -58,6 +62,7 @@ public:
 		int res = recv(m_sock, m_buf.data() + m_used, m_buf.size() - m_used, 0);
 		if (res <= 0) return -1;
 		m_used += res;
+		ctool::dump((uchar*)m_buf.data(), res);
 		return 0;
 	}
 	int sendata(void* buf, int nsize)
@@ -184,7 +189,7 @@ public:
 			m_hiocp = INVALID_HANDLE_VALUE;
 			return false;
 		}
-		CreateIoCompletionPort((HANDLE)m_sock, m_hiocp, 0, 0);
+		CreateIoCompletionPort((HANDLE)m_sock, m_hiocp, 1, 0);
 		m_pool.invoke();
 		m_pool.dispatchwork(threadwork(this, (FUNCTYPE)&ciocpserver::threadiocp));
 		if (!newaccept()) return false;
@@ -201,7 +206,7 @@ public:
 		if (!AcceptEx(m_sock, *pclient, *pclient, 0, sizeof(sockaddr_in) + 16,
 			sizeof(sockaddr_in) + 16, *pclient, *pclient))
 		{
-			std::cout << GetLastError() << std::endl;
+			if (GetLastError() == WSA_IO_PENDING) return true;
 			closesocket(m_sock);
 			m_sock = INVALID_SOCKET;
 			m_hiocp = INVALID_HANDLE_VALUE;
@@ -210,6 +215,10 @@ public:
 		return true;
 	}
 
+	void bindnewsock(SOCKET s)
+	{
+		CreateIoCompletionPort((HANDLE)s, m_hiocp, 1, 0);
+	}
 
 	~ciocpserver();
 
@@ -228,9 +237,11 @@ private:
 		OVERLAPPED* lpoverlapped = NULL;
 		if (GetQueuedCompletionStatus(m_hiocp, &tranferrid, &completionkey, &lpoverlapped, INFINITE))
 		{
-			if (tranferrid > 0 && completionkey)
+			if (completionkey)
 			{
 				coverlapped* poverlapped = CONTAINING_RECORD(lpoverlapped, coverlapped, m_overlapped);
+				poverlapped->m_server = this;
+				cout << poverlapped->m_operator << endl;
 				switch (poverlapped->m_operator)
 				{
 				case EAccept:
@@ -259,7 +270,7 @@ private:
 				break;
 				}
 			}
-			return -1;
+			else return -1;
 		}
 		return 0;
 	}
