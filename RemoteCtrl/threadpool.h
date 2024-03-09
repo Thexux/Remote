@@ -42,7 +42,7 @@ private:
 class cthread
 {
 public:
-	cthread() : m_hthread(NULL) {}
+	cthread() : m_hthread(NULL), m_bstatus(0) {}
 	~cthread()
 	{
 		stop();
@@ -73,6 +73,7 @@ public:
 
 	bool isidle() // true 表示空闲，false 表示已分配
 	{
+		if (m_work.load() == NULL) return true;
 		return !m_work.load()->isvaild();
 	}
 
@@ -93,6 +94,11 @@ private:
 	{
 		while (m_bstatus)
 		{
+			if (m_work.load() == NULL)
+			{
+				Sleep(1);
+				continue;
+			}
 			::threadwork work = *m_work.load();
 			if (work.isvaild())
 			{
@@ -126,7 +132,7 @@ class cthreadpool
 public:
 
 	cthreadpool() {}
-	cthreadpool(size_t size)
+	cthreadpool(int size)
 	{
 		m_threads.resize(size);
 		for (int i = 0; i < size; i++) m_threads[i] = new cthread();
@@ -134,6 +140,7 @@ public:
 	~cthreadpool()
 	{
 		stop();
+		for (int i = 0; i < m_threads.size(); i++) delete m_threads[i];
 		m_threads.clear();
 	}
 	bool invoke()
@@ -173,7 +180,7 @@ public:
 
 	bool checkthreadvalid(int idx)
 	{
-		if (idx >= 0 && idx < m_threads.size()) return m_threads[idx]->isvalid();
+		if (idx >= 0 && idx < (int)m_threads.size()) return m_threads[idx]->isvalid();
 		return false;
 	}
 

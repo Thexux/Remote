@@ -2,6 +2,7 @@
 #include "pch.h"
 #include <atomic>
 #include <list>
+#include "threadpool.h"
 
 template<class T>
 class cpqueue
@@ -39,7 +40,7 @@ public:
 				&cpqueue<T>::threadrntry,
 				0, this);
 	}
-	~cpqueue()
+	virtual ~cpqueue()
 	{
 		if (m_lock) return;
 		m_lock = 1;
@@ -62,7 +63,7 @@ public:
 		if (res == 0) delete param;
 		return res;
 	}
-	bool popfront(T& data)
+	virtual bool popfront(T& data)
 	{
 		HANDLE hevent = CreateEvent(NULL, TRUE, FALSE, NULL);
 		iocparam param(cqpop, data, hevent);
@@ -112,14 +113,14 @@ public:
 		if (res == 0) delete param;
 		return res;
 	}
-private:
+protected:
 	static void threadrntry(void* arg)
 	{
 		cpqueue<T>* pthis = (cpqueue<T>*) arg;
 		pthis->threadmain();
 		_endthread();
 	}
-	void dealparam(iocparam* param)
+	virtual void dealparam(iocparam* param)
 	{
 		if (param->noperator == cqpush) m_lstdata.push_back(param->data), delete param;
 		else if (param->noperator == cqpop)
@@ -162,9 +163,81 @@ private:
 		}
 		//CloseHandle(m_hcompeletionport);
 	}
-private:
+protected:
 	std::list<T> m_lstdata;
 	HANDLE m_hcompeletionport;
 	HANDLE m_hthread;
 	std::atomic<bool> m_lock;
 };
+
+//#define T char
+template<class T>
+class cpsendqueue : public cpqueue<T>, public threadfuncbase
+{
+public:
+	typedef int (threadfuncbase::* MCALLBACK) (T& data);
+	cpsendqueue(threadfuncbase* obj, MCALLBACK callback)
+		:cpqueue<T>(), m_base(obj), m_callback(callback) 
+	{
+		m_thread.start();
+		m_thread.updatework(threadwork(this, (FUNCTYPE)&cpsendqueue<T>::threadtick));
+	}
+	virtual ~cpsendqueue() 
+	{
+		m_thread.stop();
+		m_base = NULL, m_callback = NULL;
+	}
+protected:
+	
+	virtual bool popfront(T& data) {return false;}
+	bool popfront()
+	{
+		typename cpqueue<T>::iocparam* param = new typename cpqueue<T>::iocparam(cpqueue<T>::cqpop, T());
+		if (cpqueue<T>::m_lock)
+		{
+			delete param;
+			return false;
+		}
+		bool res = PostQueuedCompletionStatus(cpqueue<T>::m_hcompeletionport,
+			sizeof(*param), (ULONG_PTR)&param, 0);
+		if (res == 0)
+		{
+			delete param;
+			return false;
+		}
+		return res;
+	}
+	int threadtick()
+	{
+		if (cpqueue<T>::m_lstdata.size() > 0) popfront();
+		Sleep(1);
+		return 0;
+	}
+
+	virtual void dealparam(typename cpqueue<T>::iocparam* param)
+	{
+		if (param->noperator == cpqueue<T>::cqpush) cpqueue<T>::m_lstdata.push_back(param->data), delete param;
+		else if (param->noperator == cpqueue<T>::cqpop)
+		{
+			if (cpqueue<T>::m_lstdata.size() == 0) return;
+			param->data = cpqueue<T>::m_lstdata.front();
+			if ((m_base->*m_callback)(param->data) == 0)
+			cpqueue<T>::m_lstdata.pop_front();
+			delete param;
+		}
+		else if (param->noperator == cpqueue<T>::cqsize)
+		{
+			param->noperator = cpqueue<T>::m_lstdata.size();
+			SetEvent(param->hevent);
+		}
+		else if (param->noperator == cpqueue<T>::cqclear) cpqueue<T>::m_lstdata.clear(), delete param;
+		else OutputDebugString(_T("unknow operator!\r\n"));
+	}
+
+private:
+	threadfuncbase* m_base;
+	MCALLBACK m_callback;
+	cthread m_thread;
+};
+
+typedef cpsendqueue<std::vector<char>>::MCALLBACK SENDCALLBACK;

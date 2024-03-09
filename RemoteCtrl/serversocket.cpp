@@ -17,7 +17,7 @@ csocket::csocket()
 	m_sock = -1;
 	m_client = -1;
 	WSADATA data;
-	if (WSAStartup(MAKEWORD(1, 1), &data))
+	if (WSAStartup(MAKEWORD(2, 2), &data))
 	{
 		MessageBox(NULL, _T("无法初始化套接字环境，请检查网络设置"), _T("初始化错误"), MB_OK | MB_ICONERROR);
 		exit(0);
